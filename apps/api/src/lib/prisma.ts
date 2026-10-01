@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { env } from '@/config/env';
+import { env } from '../config/env';
 import { logger } from './logger';
 
 declare global {

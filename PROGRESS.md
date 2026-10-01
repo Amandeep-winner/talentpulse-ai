@@ -25,7 +25,10 @@ This document tracks implementation progress across all 34 tasks.
   - Authored migrations `001_init` (vector extension + HNSW cosine indexes) and `002_views` (analytics views + `tp_readonly` role permissions).
   - Built Prisma client singleton and pgvector query helpers in `lib/vector.ts`.
   - Added integration tests verifying pgvector KNN similarity search, view accessibility, and strict read-only role permission restrictions.
-- [ ] Task 05: Docker & Compose
+- [x] Task 05: Docker & Compose
+  - Containerized full stack using multi-stage Dockerfiles (`Dockerfile.api`, `Dockerfile.web`).
+  - Configured `docker-compose.yml` with healthchecks, non-root users, standalone Next.js build, and worker process.
+  - Verified container startup, automatic migration execution on launch, API health and readiness, and web port delivery.
 - [ ] Task 06: Authentication & authorization
 - [ ] Task 07: Jobs & Candidates CRUD
 - [ ] Task 08: Applications pipeline

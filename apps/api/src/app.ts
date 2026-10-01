@@ -4,12 +4,12 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import client from 'prom-client';
-import { env } from '@/config/env';
-import { requestContextMiddleware } from '@/middleware/requestContext';
-import { httpLogger } from '@/lib/logger';
-import { errorHandler } from '@/middleware/errorHandler';
-import { notFoundHandler } from '@/middleware/notFoundHandler';
-import { checkDatabaseConnection } from '@/lib/prisma';
+import { env } from './config/env';
+import { requestContextMiddleware } from './middleware/requestContext';
+import { httpLogger } from './lib/logger';
+import { errorHandler } from './middleware/errorHandler';
+import { notFoundHandler } from './middleware/notFoundHandler';
+import { checkDatabaseConnection } from './lib/prisma';
 
 // Initialize Prometheus default metrics collection once
 client.collectDefaultMetrics({ prefix: 'talentpulse_' });

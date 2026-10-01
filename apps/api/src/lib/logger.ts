@@ -1,8 +1,8 @@
 import pino from 'pino';
 import pinoHttp from 'pino-http';
 import crypto from 'crypto';
-import { env } from '@/config/env';
-import { getRequestContext } from '@/middleware/requestContext';
+import { env } from '../config/env';
+import { getRequestContext } from '../middleware/requestContext';
 
 export const logger = pino({
   level: env.NODE_ENV === 'test' ? 'silent' : 'info',

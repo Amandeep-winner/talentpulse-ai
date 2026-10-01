@@ -1,0 +1,57 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+RUN apk add --no-cache openssl libc6-compat
+
+# Copy workspace package manifests
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+
+# Install all dependencies across workspaces
+RUN npm ci
+
+# Copy shared package and API source code
+COPY packages/shared ./packages/shared
+COPY prisma ./prisma
+COPY apps/api ./apps/api
+
+# Generate Prisma Client and build packages
+RUN npx prisma generate
+RUN npm run build -w packages/shared
+RUN npm run build -w apps/api
+
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+RUN apk add --no-cache openssl wget libc6-compat
+
+ENV NODE_ENV=production
+ENV PORT=4000
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodejs
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/tsconfig.base.json ./tsconfig.base.json
+COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/tsconfig.json
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder /app/apps/api/docker-entrypoint.sh ./apps/api/docker-entrypoint.sh
+COPY --from=builder /app/prisma ./prisma
+
+RUN chmod +x ./apps/api/docker-entrypoint.sh && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
+WORKDIR /app/apps/api
+
+EXPOSE 4000
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["node", "-r", "tsconfig-paths/register", "dist/server.js"]
