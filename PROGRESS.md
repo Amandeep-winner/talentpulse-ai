@@ -8,7 +8,11 @@ This document tracks implementation progress across all 34 tasks.
   - Bootstrapped monorepo with npm workspaces, strict TypeScript, ESLint, and Prettier.
   - Implemented `@talentpulse/shared` package with Zod schemas and inferred types.
   - Set up ADR-000, documentation skeleton, and progress tracking files.
-- [ ] Task 02: Next.js + TypeScript frontend shell
+- [x] Task 02: Next.js + TypeScript frontend shell
+  - Created Next.js 14 App Router application with Tailwind CSS and neutral dark theme.
+  - Implemented handwritten UI primitives (Button, Input, Card, Badge, Table, Tabs, Dialog, Select, Skeleton, EmptyState, Toast).
+  - Built typed API client with 401 token auto-refresh and normalized error handling.
+  - Configured next/jest with React Testing Library tests for navigation and layout.
 - [ ] Task 03: Node + Express API skeleton
 - [ ] Task 04: PostgreSQL + Prisma + pgvector
 - [ ] Task 05: Docker & Compose
