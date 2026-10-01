@@ -13,7 +13,12 @@ This document tracks implementation progress across all 34 tasks.
   - Implemented handwritten UI primitives (Button, Input, Card, Badge, Table, Tabs, Dialog, Select, Skeleton, EmptyState, Toast).
   - Built typed API client with 401 token auto-refresh and normalized error handling.
   - Configured next/jest with React Testing Library tests for navigation and layout.
-- [ ] Task 03: Node + Express API skeleton
+- [x] Task 03: Node + Express API skeleton
+  - Implemented Express 4 application factory (`createApp`) and server entrypoint (`server.ts`).
+  - Added Zod-validated environment configuration (`config/env.ts`) with fail-fast validation.
+  - Implemented requestContext with AsyncLocalStorage request tracing (`x-request-id`), pino logging, helmet, cors, and rate limiting.
+  - Built `AppError` hierarchy and central error handler with normalized error response format.
+  - Implemented `/health`, `/ready`, and `/metrics` (Prometheus) endpoints with passing Supertest and unit test suites.
 - [ ] Task 04: PostgreSQL + Prisma + pgvector
 - [ ] Task 05: Docker & Compose
 - [ ] Task 06: Authentication & authorization
