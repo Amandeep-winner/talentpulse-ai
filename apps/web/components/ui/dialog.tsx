@@ -52,6 +52,10 @@ export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLD
   return <div className={cn('mb-4 space-y-1', className)} {...props} />;
 }
 
+export function DialogContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('relative', className)} {...props} />;
+}
+
 export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return <h2 className={cn('text-lg font-semibold text-white', className)} {...props} />;
 }

@@ -8,9 +8,16 @@ export interface ToastItem {
   message: string;
 }
 
-interface ToastContextValue {
+export interface ToastOptions {
+  title?: string;
+  description?: string;
+  variant?: 'success' | 'danger' | 'warning' | 'info' | 'default';
+}
+
+export interface ToastContextValue {
   toasts: ToastItem[];
   showToast: (type: 'success' | 'error' | 'info', message: string) => void;
+  addToast: (options: ToastOptions) => void;
   removeToast: (id: string) => void;
 }
 
@@ -34,8 +41,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [removeToast],
   );
 
+  const addToast = React.useCallback(
+    ({ title, description, variant }: ToastOptions) => {
+      const type: 'success' | 'error' | 'info' =
+        variant === 'danger' || variant === 'warning' ? 'error' : variant === 'info' ? 'info' : 'success';
+      const message = title
+        ? description
+          ? `${title}: ${description}`
+          : title
+        : description || '';
+      showToast(type, message);
+    },
+    [showToast],
+  );
+
   return (
-    <ToastContext.Provider value={{ toasts, showToast, removeToast }}>
+    <ToastContext.Provider value={{ toasts, showToast, addToast, removeToast }}>
       {children}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
         {toasts.map((toast) => {
@@ -68,8 +89,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useToast() {
+export function useToast(): ToastContextValue {
   const context = React.useContext(ToastContext);
-  if (!context) throw new Error('useToast must be used within ToastProvider');
+  if (!context) {
+    return {
+      toasts: [],
+      showToast: () => {},
+      addToast: () => {},
+      removeToast: () => {},
+    };
+  }
   return context;
 }

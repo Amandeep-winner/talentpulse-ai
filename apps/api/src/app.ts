@@ -10,9 +10,12 @@ import { httpLogger } from './lib/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { checkDatabaseConnection } from './lib/prisma';
+import { checkRedisConnection } from './lib/redis';
 import { authRoutes } from './modules/auth/auth.routes';
 import { usersRoutes } from './modules/users/users.routes';
 import { apiKeysRoutes } from './modules/api-keys/api-keys.routes';
+import { jobsRoutes } from './modules/jobs/jobs.routes';
+import { candidatesRoutes } from './modules/candidates/candidates.routes';
 import { authenticateKeyOrJwt } from './middleware/auth';
 
 // Initialize Prometheus default metrics collection once
@@ -70,7 +73,8 @@ export function createApp(): Express {
 
   app.get('/ready', async (_req, res) => {
     const isDbConnected = await checkDatabaseConnection();
-    const isReady = isDbConnected;
+    const isRedisConnected = await checkRedisConnection();
+    const isReady = isDbConnected && isRedisConnected;
 
     res.status(isReady ? 200 : 503).json({
       status: isReady ? 'ready' : 'degraded',
@@ -78,6 +82,7 @@ export function createApp(): Express {
       services: {
         api: 'healthy',
         database: isDbConnected ? 'connected' : 'disconnected',
+        redis: isRedisConnected ? 'connected' : 'disconnected',
       },
     });
   });
@@ -95,6 +100,8 @@ export function createApp(): Express {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', usersRoutes);
   app.use('/api/api-keys', apiKeysRoutes);
+  app.use('/api/jobs', jobsRoutes);
+  app.use('/api/candidates', candidatesRoutes);
 
   if (env.NODE_ENV === 'test') {
     app.get('/api/test-key-auth', authenticateKeyOrJwt, (req, res) => {

@@ -39,7 +39,14 @@ This document tracks implementation progress across all 34 tasks.
   - Built login and register pages with React Hook Form and Zod schemas.
   - Built `AppShell` with route protection and role-aware sidebar navigation.
   - Verified with 23 passing API integration tests, 7 web unit tests, and automated smoke test scripts in bash and PowerShell.
-- [ ] Task 07: Jobs & Candidates CRUD
+- [x] Task 07: Jobs & Candidates CRUD
+  - Built Jobs service and controller with multi-tenant filtering, pagination, and RBAC (ADMIN/RECRUITER write, ANALYST read-only).
+  - Built Candidates service and controller supporting multi-tenant queries, detail lookup, and delete cascades.
+  - Implemented versioned namespace Redis caching (`tp:{orgId}:v{ns}:{resource}:{sha1(params)}`) with single-flight mutex and automatic cache invalidation on writes.
+  - Added skill canonicalization and normalization mapping synonyms and aliases to standardized taxonomy tags.
+  - Implemented resume ingestion supporting memory-bounded 5MB file upload via `multer` (PDF parsing via `pdf-parse` and plain text decoding) plus raw text paste.
+  - Built Next.js web interfaces for job requisition directory, requisition detail with skills badges, candidate directory, and candidate profile with resume viewer.
+  - Verified with 9 new integration tests across jobs and candidates, 3 web test suites, and clean Next.js build.
 - [ ] Task 08: Applications pipeline
 - [ ] Task 09: Events (funnel ingestion with idempotency)
 - [ ] Task 10: Analytics engine
