@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
-import { Sidebar } from '@/components/layout/sidebar';
-import { Topbar } from '@/components/layout/topbar';
+import { AppShell } from '@/components/layout/app-shell';
 
 export const metadata: Metadata = {
   title: 'TalentPulse AI - Agentic Recruitment Intelligence & Optimization',
@@ -18,15 +17,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="bg-[#0B0F19] text-gray-100 antialiased">
         <Providers>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-              <Topbar />
-              <main className="flex-1 overflow-y-auto p-6 bg-[#0B0F19]">
-                {children}
-              </main>
-            </div>
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

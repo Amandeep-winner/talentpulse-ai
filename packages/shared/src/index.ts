@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
 /**
+ * Roles Enum
+ */
+export const RoleEnum = z.enum(['ADMIN', 'RECRUITER', 'ANALYST']);
+export type Role = z.infer<typeof RoleEnum>;
+
+/**
  * Health check response schema
  */
 export const healthResponseSchema = z.object({
@@ -60,3 +66,87 @@ export const paginationMetaSchema = z.object({
 });
 
 export type PaginationMeta = z.infer<typeof paginationMetaSchema>;
+
+/**
+ * Authentication Schemas
+ */
+export const registerRequestSchema = z.object({
+  organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+});
+
+export type RegisterRequest = z.infer<typeof registerRequestSchema>;
+
+export const loginRequestSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
+
+export const userProfileSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  organizationName: z.string().optional(),
+  name: z.string(),
+  email: z.string().email(),
+  role: RoleEnum,
+  createdAt: z.string().datetime().optional(),
+});
+
+export type UserProfile = z.infer<typeof userProfileSchema>;
+
+export const authResponseSchema = z.object({
+  user: userProfileSchema,
+  accessToken: z.string(),
+});
+
+export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+export const createUserRequestSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  role: RoleEnum.default('RECRUITER'),
+});
+
+export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
+
+export const updateUserRoleSchema = z.object({
+  role: RoleEnum,
+});
+
+export type UpdateUserRole = z.infer<typeof updateUserRoleSchema>;
+
+export const createApiKeyRequestSchema = z.object({
+  name: z.string().min(2, 'Key name must be at least 2 characters'),
+});
+
+export type CreateApiKeyRequest = z.infer<typeof createApiKeyRequestSchema>;
+
+export const apiKeyItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  keyPrefix: z.string(),
+  lastUsedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+});
+
+export type ApiKeyItem = z.infer<typeof apiKeyItemSchema>;
+
+export const createApiKeyResponseSchema = z.object({
+  apiKey: apiKeyItemSchema,
+  plaintextKey: z.string(),
+});
+
+export type CreateApiKeyResponse = z.infer<typeof createApiKeyResponseSchema>;

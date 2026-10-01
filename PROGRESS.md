@@ -29,7 +29,16 @@ This document tracks implementation progress across all 34 tasks.
   - Containerized full stack using multi-stage Dockerfiles (`Dockerfile.api`, `Dockerfile.web`).
   - Configured `docker-compose.yml` with healthchecks, non-root users, standalone Next.js build, and worker process.
   - Verified container startup, automatic migration execution on launch, API health and readiness, and web port delivery.
-- [ ] Task 06: Authentication & authorization
+- [x] Task 06: Authentication & authorization
+  - Implemented registration (creates Organization and ADMIN user), login, and refresh token rotation with reuse detection.
+  - Revoking a previously used token revokes its entire token family to defend against stolen credentials.
+  - Implemented `authenticate`, `authorize(...roles)`, and `authenticateKeyOrJwt` middlewares.
+  - Added Users management module with multi-tenant organization isolation and ADMIN role enforcement.
+  - Added API keys module storing SHA-256 hashes, returning plaintext once, and supporting revocation.
+  - Created Web `AuthProvider` with in-memory access tokens, silent refresh on mount, and automatic Bearer injection.
+  - Built login and register pages with React Hook Form and Zod schemas.
+  - Built `AppShell` with route protection and role-aware sidebar navigation.
+  - Verified with 23 passing API integration tests, 7 web unit tests, and automated smoke test scripts in bash and PowerShell.
 - [ ] Task 07: Jobs & Candidates CRUD
 - [ ] Task 08: Applications pipeline
 - [ ] Task 09: Events (funnel ingestion with idempotency)

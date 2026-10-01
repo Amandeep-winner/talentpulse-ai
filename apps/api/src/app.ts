@@ -10,6 +10,10 @@ import { httpLogger } from './lib/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { checkDatabaseConnection } from './lib/prisma';
+import { authRoutes } from './modules/auth/auth.routes';
+import { usersRoutes } from './modules/users/users.routes';
+import { apiKeysRoutes } from './modules/api-keys/api-keys.routes';
+import { authenticateKeyOrJwt } from './middleware/auth';
 
 // Initialize Prometheus default metrics collection once
 client.collectDefaultMetrics({ prefix: 'talentpulse_' });
@@ -86,6 +90,22 @@ export function createApp(): Express {
       res.status(500).end(err);
     }
   });
+
+  // API Modules
+  app.use('/api/auth', authRoutes);
+  app.use('/api/users', usersRoutes);
+  app.use('/api/api-keys', apiKeysRoutes);
+
+  if (env.NODE_ENV === 'test') {
+    app.get('/api/test-key-auth', authenticateKeyOrJwt, (req, res) => {
+      res.status(200).json({
+        data: {
+          organizationId: req.organizationId,
+          user: req.user,
+        },
+      });
+    });
+  }
 
   // Catch-all 404 & Central Error Handler
   app.use(notFoundHandler);

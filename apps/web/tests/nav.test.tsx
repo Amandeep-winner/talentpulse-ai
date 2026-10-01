@@ -8,8 +8,33 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
 }));
 
+let mockCurrentUser: {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'RECRUITER' | 'ANALYST';
+  organizationId: string;
+} | null = null;
+
+jest.mock('@/lib/auth-context', () => ({
+  useAuth: () => ({
+    user: mockCurrentUser,
+    accessToken: 'test-token',
+    isLoading: false,
+    isAuthenticated: !!mockCurrentUser,
+    login: jest.fn(),
+    register: jest.fn(),
+    logout: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 describe('Layout and Navigation', () => {
-  it('renders sidebar navigation links correctly', () => {
+  beforeEach(() => {
+    mockCurrentUser = null;
+  });
+
+  it('renders sidebar navigation links correctly for default admin', () => {
     render(<Sidebar />);
 
     expect(screen.getByText('TalentPulse AI')).toBeInTheDocument();
@@ -26,6 +51,26 @@ describe('Layout and Navigation', () => {
     expect(screen.getByText('Integrations')).toBeInTheDocument();
     expect(screen.getByText('Audit')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
+  });
+
+  it('hides admin-only navigation links for ANALYST role', () => {
+    mockCurrentUser = {
+      id: '123',
+      name: 'Analyst User',
+      email: 'analyst@example.com',
+      role: 'ANALYST',
+      organizationId: 'org-1',
+    };
+
+    render(<Sidebar />);
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Analytics')).toBeInTheDocument();
+    expect(screen.queryByText('Integrations')).not.toBeInTheDocument();
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+    expect(screen.queryByText('Optimize')).not.toBeInTheDocument();
+    expect(screen.getByText('Analyst User')).toBeInTheDocument();
+    expect(screen.getByText('ANALYST')).toBeInTheDocument();
   });
 
   it('renders topbar with persistent synthetic demo data badge', () => {

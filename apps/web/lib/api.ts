@@ -20,6 +20,15 @@ export class ApiError extends Error {
 
 let isRefreshing = false;
 let refreshSubscribers: Array<(tokenRefreshed: boolean) => void> = [];
+let currentAccessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  currentAccessToken = token;
+}
+
+export function getAccessToken(): string | null {
+  return currentAccessToken;
+}
 
 function subscribeTokenRefresh(cb: (tokenRefreshed: boolean) => void) {
   refreshSubscribers.push(cb);
@@ -39,8 +48,18 @@ async function refreshAuth(): Promise<boolean> {
         'Content-Type': 'application/json',
       },
     });
-    return res.ok;
+    if (!res.ok) {
+      setAccessToken(null);
+      return false;
+    }
+    const json = await res.json();
+    if (json.data?.accessToken) {
+      setAccessToken(json.data.accessToken);
+      return true;
+    }
+    return false;
   } catch {
+    setAccessToken(null);
     return false;
   }
 }
@@ -56,6 +75,9 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
   const requestHeaders = new Headers(headers);
   if (!requestHeaders.has('Content-Type') && !(restOptions.body instanceof FormData)) {
     requestHeaders.set('Content-Type', 'application/json');
+  }
+  if (currentAccessToken && !requestHeaders.has('Authorization')) {
+    requestHeaders.set('Authorization', `Bearer ${currentAccessToken}`);
   }
 
   const response = await fetch(url, {
