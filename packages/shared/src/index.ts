@@ -271,3 +271,72 @@ export const resumePasteRequestSchema = z.object({
 
 export type ResumePasteRequest = z.infer<typeof resumePasteRequestSchema>;
 
+/**
+ * Applications Enums and Schemas
+ */
+export const ApplicationStatusEnum = z.enum([
+  'APPLIED',
+  'SCREENING',
+  'INTERVIEW',
+  'OFFER',
+  'HIRED',
+  'REJECTED',
+  'WITHDRAWN',
+]);
+export type ApplicationStatus = z.infer<typeof ApplicationStatusEnum>;
+
+export const createApplicationRequestSchema = z.object({
+  candidateId: z.string().uuid('Invalid candidate ID format'),
+  jobId: z.string().uuid('Invalid job ID format'),
+  source: z.string().max(100).optional().nullable(),
+  status: ApplicationStatusEnum.optional().default('APPLIED'),
+});
+export type CreateApplicationRequest = z.infer<typeof createApplicationRequestSchema>;
+
+export const updateApplicationStatusSchema = z.object({
+  status: ApplicationStatusEnum,
+});
+export type UpdateApplicationStatusRequest = z.infer<typeof updateApplicationStatusSchema>;
+
+export const applicationFilterQuerySchema = paginationQuerySchema.extend({
+  jobId: z.string().uuid().optional(),
+  candidateId: z.string().uuid().optional(),
+  status: ApplicationStatusEnum.optional(),
+  q: z.string().optional(),
+});
+export type ApplicationFilterQuery = z.infer<typeof applicationFilterQuerySchema>;
+
+export const applicationCandidateSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  email: z.string(),
+  location: z.string(),
+  experienceYears: z.number(),
+  skills: z.array(z.string()),
+});
+export type ApplicationCandidateSummary = z.infer<typeof applicationCandidateSummarySchema>;
+
+export const applicationJobSummarySchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  category: z.string(),
+  location: z.string(),
+  status: JobStatusEnum,
+});
+export type ApplicationJobSummary = z.infer<typeof applicationJobSummarySchema>;
+
+export const applicationItemSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  candidateId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  status: ApplicationStatusEnum,
+  source: z.string().nullable().optional(),
+  appliedAt: z.string().datetime(),
+  updatedAt: z.string().datetime().optional(),
+  candidate: applicationCandidateSummarySchema,
+  job: applicationJobSummarySchema,
+});
+export type ApplicationItem = z.infer<typeof applicationItemSchema>;
+
+

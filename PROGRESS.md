@@ -46,8 +46,14 @@ This document tracks implementation progress across all 34 tasks.
   - Added skill canonicalization and normalization mapping synonyms and aliases to standardized taxonomy tags.
   - Implemented resume ingestion supporting memory-bounded 5MB file upload via `multer` (PDF parsing via `pdf-parse` and plain text decoding) plus raw text paste.
   - Built Next.js web interfaces for job requisition directory, requisition detail with skills badges, candidate directory, and candidate profile with resume viewer.
-  - Verified with 9 new integration tests across jobs and candidates, 3 web test suites, and clean Next.js build.
-- [ ] Task 08: Applications pipeline
+- [x] Task 08: Applications pipeline
+  - Built Applications module with strict pipeline state machine transitions (`APPLIED` -> `SCREENING` -> `INTERVIEW` -> `OFFER` -> `HIRED`).
+  - Enforced terminal state immutability preventing changes once an application is `HIRED`, `REJECTED`, or `WITHDRAWN`.
+  - Enforced duplicate application prevention via compound unique constraint `(candidateId, jobId)` returning 409 Conflict.
+  - Implemented multi-tenant isolation and RBAC checks (ADMIN/RECRUITER write, ANALYST read-only).
+  - Built Next.js Kanban board UI with stage counts, quick stage advancement, inline status move selector, and dual Kanban/Table views.
+  - Built new application creation modal allowing recruiters to link candidates to open requisitions.
+  - Verified with 7 new API integration tests and 3 new web unit tests covering transitions, terminal states, duplicate prevention, and UI interactions.
 - [ ] Task 09: Events (funnel ingestion with idempotency)
 - [ ] Task 10: Analytics engine
 - [ ] Task 11: Candidate & job embeddings (pipeline)

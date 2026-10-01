@@ -89,15 +89,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const defaultToastContext: ToastContextValue = {
+  toasts: [],
+  showToast: () => {},
+  addToast: () => {},
+  removeToast: () => {},
+};
+
 export function useToast(): ToastContextValue {
   const context = React.useContext(ToastContext);
-  if (!context) {
-    return {
-      toasts: [],
-      showToast: () => {},
-      addToast: () => {},
-      removeToast: () => {},
-    };
-  }
-  return context;
+  return context || defaultToastContext;
 }
