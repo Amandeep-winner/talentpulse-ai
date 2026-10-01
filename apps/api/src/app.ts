@@ -9,6 +9,7 @@ import { requestContextMiddleware } from '@/middleware/requestContext';
 import { httpLogger } from '@/lib/logger';
 import { errorHandler } from '@/middleware/errorHandler';
 import { notFoundHandler } from '@/middleware/notFoundHandler';
+import { checkDatabaseConnection } from '@/lib/prisma';
 
 // Initialize Prometheus default metrics collection once
 client.collectDefaultMetrics({ prefix: 'talentpulse_' });
@@ -63,12 +64,16 @@ export function createApp(): Express {
     });
   });
 
-  app.get('/ready', (_req, res) => {
-    res.status(200).json({
-      status: 'ready',
+  app.get('/ready', async (_req, res) => {
+    const isDbConnected = await checkDatabaseConnection();
+    const isReady = isDbConnected;
+
+    res.status(isReady ? 200 : 503).json({
+      status: isReady ? 'ready' : 'degraded',
       timestamp: new Date().toISOString(),
       services: {
         api: 'healthy',
+        database: isDbConnected ? 'connected' : 'disconnected',
       },
     });
   });

@@ -19,7 +19,12 @@ This document tracks implementation progress across all 34 tasks.
   - Implemented requestContext with AsyncLocalStorage request tracing (`x-request-id`), pino logging, helmet, cors, and rate limiting.
   - Built `AppError` hierarchy and central error handler with normalized error response format.
   - Implemented `/health`, `/ready`, and `/metrics` (Prometheus) endpoints with passing Supertest and unit test suites.
-- [ ] Task 04: PostgreSQL + Prisma + pgvector
+- [x] Task 04: PostgreSQL + Prisma + pgvector
+  - Deployed PostgreSQL 16 container with pgvector extension and Redis 7 container.
+  - Implemented complete Prisma schema with multi-tenancy, indexes, and vector(384) columns.
+  - Authored migrations `001_init` (vector extension + HNSW cosine indexes) and `002_views` (analytics views + `tp_readonly` role permissions).
+  - Built Prisma client singleton and pgvector query helpers in `lib/vector.ts`.
+  - Added integration tests verifying pgvector KNN similarity search, view accessibility, and strict read-only role permission restrictions.
 - [ ] Task 05: Docker & Compose
 - [ ] Task 06: Authentication & authorization
 - [ ] Task 07: Jobs & Candidates CRUD
