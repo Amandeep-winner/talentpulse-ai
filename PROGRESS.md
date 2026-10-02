@@ -106,7 +106,15 @@ This document tracks implementation progress across all 34 tasks.
   - Mounted `/api/knowledge` routes with full RBAC (ADMIN/RECRUITER ingest, ADMIN delete, all authenticated users ask/list).
   - Built Next.js `/knowledge` page with chat-style Q&A, suggested prompts, clickable citation chips with passage modals, and document library management.
   - Verified with 15 API integration tests and 2 React Testing Library web tests.
-- [ ] Task 15: Ask TalentPulse (conversational analyst, v1 pipeline)
+- [x] Task 15: Ask TalentPulse (conversational analyst, v1 pipeline)
+  - Built AI pipeline (`modules/ai/pipeline.ts`) with intent classification, tool routing, step tracking, and message persistence.
+  - Implemented deterministic `diagnoseMetricChange` comparing 30-day periods across publishers, identifying SocialReach as the primary driver of application drop (~35% drop in application rate).
+  - Built analytical SQL tool with CPA rankings and Recharts bar chart specs.
+  - Built pgvector candidate semantic search tool and integrated RAG knowledge retrieval.
+  - Logged each tool execution step into PostgreSQL `AiToolCall` with argsHash, latencyMs, and success status.
+  - Mounted `/api/ai` endpoints with rate limiting, conversation history, and deletion.
+  - Built Next.js `/ai` chat UI with suggestion chips, expandable SQL viewer, interactive Recharts charts, recommendations, and execution traces.
+  - Verified with 11 API integration tests and 1 React Testing Library web test.
 - [ ] Task 16: Safe text-to-SQL
 - [ ] Task 17: Campaign system & simulation engine
 - [ ] Task 18: Campaign analytics

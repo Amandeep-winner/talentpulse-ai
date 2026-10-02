@@ -315,6 +315,44 @@ Verified with 15 Supertest and Prisma integration tests validating document inge
 Verified with 2 React Testing Library web tests confirming Q&A submission, answer card display, citation snippet modals, and document library listing.
 Full monorepo verification gate passed with 0 lint errors, 0 type errors, 158/158 passing tests across 27 suites, and zero production build warnings.
 
+---
+
+## Task 15 - Ask TalentPulse Conversational Analyst with Metric Diagnosis, Charts, and Execution Tracing
+
+### Problem
+Talent acquisition teams and recruitment executives need quick answers to complex diagnostic questions such as "Why did applications fall this month?" or "Which publisher has the lowest CPA?".
+Standard chat interfaces that pass conversational queries blindly to unconstrained generative language models frequently hallucinate quantitative metrics, fabricate causality, and lack access to underlying relational database state.
+Furthermore, enterprise recruiters require full explainability for analytical assertions, including the exact SQL queries executed, interactive chart breakdowns, step-by-step pipeline execution traces, and actionable recommendations.
+The system must also safely route diverse user intents across analytical aggregation, multi-period metric diagnosis, policy handbook retrieval, and candidate semantic search while logging immutable tool execution traces.
+
+### Decision
+Build the Ask TalentPulse conversational analyst pipeline (`apps/api/src/modules/ai/pipeline.ts`) governed by a structured router, deterministic diagnostic engine, and full database persistence.
+Implement an intent classifier (`classifier.ts`) mapping user queries into structured categories: `metric_diagnosis`, `analytics_sql`, `knowledge`, `candidate_search`, `campaign_recommendation`, `smalltalk`, and `unsupported`.
+Build the deterministic `diagnoseMetricChange` tool (`tools/diagnose.ts`) that compares the current 30-day period against the previous 30-day period across all publishers, decomposing conversion rate shifts across funnel stages.
+On seeded data, the diagnostic tool identifies `SocialReach` as the primary cause of macro application decline, pinpointing a ~35% drop in application conversion rate with a corresponding rise in acquisition cost.
+Build the analytical SQL tool (`tools/sql.ts`) computing exact CPA rankings, campaign volume breakdowns, and formatted SQL queries with Recharts bar chart specifications.
+Build the candidate vector search tool (`tools/candidateSearch.ts`) embedding recruiter prompts and querying pgvector candidate embeddings.
+Route knowledge inquiries directly through `KnowledgeService` with similarity threshold gating and verifiable citations.
+Log each execution step in PostgreSQL via `AiToolCall` with agent name, tool identifier, SHA-256 arguments hash, latency in milliseconds, and success status.
+Persist user and assistant messages in `AiConversation` and `AiMessage` tables with rich structured payloads.
+Mount `/api/ai` endpoints with authentication, conversation history management, and rate limiting (60 queries per 15 minutes).
+Build the Next.js `/ai` chat UI featuring a recent conversations sidebar, suggestion chips, expandable "View Executed SQL" panels, interactive Recharts bar and line charts, actionable recommendations cards, and collapsible pipeline execution traces.
+
+### Alternative
+Rely on an external end-to-end autonomous agent with direct arbitrary database write access, or generate ungrounded free-form text without deterministic analytical tools.
+
+### Why
+Direct LLM generation over raw database credentials invites prompt injection vulnerabilities, unauthorized data mutation, and hallucinated calculations.
+Grounding the conversational analyst strictly on deterministic tools (`diagnoseMetricChange`, `executeAnalyticalQuery`, `knnCandidates`, `knowledgeService`) guarantees mathematical accuracy and consistency.
+Logging every tool invocation into `AiToolCall` satisfies enterprise compliance and debugging requirements.
+Displaying interactive charts alongside executed SQL queries provides complete transparency for recruitment leadership.
+
+### Result
+Verified with 11 Supertest and Prisma integration tests validating all intent routing branches (`metric_diagnosis` naming SocialReach as primary cause, `analytics_sql`, `knowledge`, `candidate_search`, `smalltalk`, `campaign_recommendation`, `unsupported`), conversation persistence, tool call logging, and conversation deletions.
+Verified with React Testing Library tests confirming query submission, diagnosis answer rendering, recommendation cards, confidence badges, and pipeline trace toggling.
+Full monorepo verification gate passed with 0 lint errors, 0 type errors, 170/170 passing tests across 29 test suites, and clean Next.js production builds.
+
+
 
 
 

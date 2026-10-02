@@ -394,6 +394,76 @@ export const knowledgeDocumentItemSchema = z.object({
 export type KnowledgeDocumentItem = z.infer<typeof knowledgeDocumentItemSchema>;
 
 /**
+ * AI Conversational Analyst Schemas
+ */
+export const AiIntentEnum = z.enum([
+  'analytics_sql',
+  'metric_diagnosis',
+  'knowledge',
+  'candidate_search',
+  'campaign_recommendation',
+  'smalltalk',
+  'unsupported',
+]);
+
+export type AiIntent = z.infer<typeof AiIntentEnum>;
+
+export const aiChartSpecSchema = z.object({
+  type: z.enum(['line', 'bar', 'pie']),
+  title: z.string().optional(),
+  xKey: z.string(),
+  series: z.array(z.string()),
+  data: z.array(z.record(z.unknown())),
+});
+
+export type AiChartSpec = z.infer<typeof aiChartSpecSchema>;
+
+export const aiQueryRequestSchema = z.object({
+  question: z.string().min(2, 'Question must be at least 2 characters'),
+  conversationId: z.string().uuid().optional(),
+});
+
+export type AiQueryRequest = z.infer<typeof aiQueryRequestSchema>;
+
+export const aiQueryResponseSchema = z.object({
+  conversationId: z.string().uuid(),
+  messageId: z.string().uuid(),
+  answer: z.string(),
+  intent: AiIntentEnum,
+  steps: z.array(z.string()),
+  sql: z.string().optional(),
+  rows: z.array(z.record(z.unknown())).optional(),
+  chart: aiChartSpecSchema.optional(),
+  recommendations: z.array(z.string()).optional(),
+  citations: z.array(knowledgeCitationSchema).optional(),
+  confidence: z.number().min(0).max(1),
+});
+
+export type AiQueryResponse = z.infer<typeof aiQueryResponseSchema>;
+
+export const aiConversationItemSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  userId: z.string().uuid(),
+  title: z.string(),
+  createdAt: z.string().datetime().or(z.date()),
+  messageCount: z.number().int().optional(),
+});
+
+export type AiConversationItem = z.infer<typeof aiConversationItemSchema>;
+
+export const aiMessageItemSchema = z.object({
+  id: z.string().uuid(),
+  conversationId: z.string().uuid(),
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string(),
+  payload: z.unknown().optional(),
+  createdAt: z.string().datetime().or(z.date()),
+});
+
+export type AiMessageItem = z.infer<typeof aiMessageItemSchema>;
+
+/**
  * Applications Enums and Schemas
  */
 export const ApplicationStatusEnum = z.enum([
