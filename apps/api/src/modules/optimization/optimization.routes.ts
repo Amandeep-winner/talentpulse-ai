@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { optimizationController } from './optimization.controller';
 import { authenticate, authorize } from '../../middleware/auth';
+import banditRoutes from './bandit/bandit.routes';
+import experimentsRoutes from './experiments/experiments.routes';
 
 const router = Router();
 
@@ -30,5 +32,11 @@ router.post('/recommendations/:id/approve', authorize('ADMIN', 'RECRUITER'), (re
 router.post('/recommendations/:id/reject', authorize('ADMIN', 'RECRUITER'), (req, res, next) => {
   optimizationController.reject(req, res, next);
 });
+
+// Sub-routes for Contextual Bandit
+router.use('/bandit', banditRoutes);
+
+// Sub-routes for A/B Experiments
+router.use('/experiments', experimentsRoutes);
 
 export default router;

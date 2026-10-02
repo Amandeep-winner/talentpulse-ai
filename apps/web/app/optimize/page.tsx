@@ -16,7 +16,9 @@ import {
   History,
   ShieldAlert,
   Loader2,
+  Zap,
 } from 'lucide-react';
+import { BanditLab } from './bandit-lab';
 import {
   ResponsiveContainer,
   BarChart,
@@ -85,6 +87,7 @@ export default function OptimizePage() {
   const { user } = useAuth();
   const { addToast } = useToast();
 
+  const [activeTab, setActiveTab] = React.useState<'reallocation' | 'bandit'>('reallocation');
   const [campaigns, setCampaigns] = React.useState<CampaignItem[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = React.useState<string>('');
   const [currentRecommendation, setCurrentRecommendation] = React.useState<RecommendationItem | null>(null);
@@ -276,41 +279,73 @@ export default function OptimizePage() {
           </p>
         </div>
 
-        {/* Campaign Selector and Generate Button */}
-        <div className="flex items-center gap-3">
-          <select
-            value={selectedCampaignId}
-            onChange={(e) => setSelectedCampaignId(e.target.value)}
-            disabled={isLoadingCampaigns || isProposing}
-            className="h-9 px-3 rounded-md bg-[#131b2e] border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            {campaigns.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.status})
-              </option>
-            ))}
-          </select>
+        {/* Campaign Selector and Generate Button (visible on reallocation tab) */}
+        {activeTab === 'reallocation' && (
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedCampaignId}
+              onChange={(e) => setSelectedCampaignId(e.target.value)}
+              disabled={isLoadingCampaigns || isProposing}
+              className="h-9 px-3 rounded-md bg-[#131b2e] border border-gray-700 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.status})
+                </option>
+              ))}
+            </select>
 
-          <Button
-            onClick={handlePropose}
-            disabled={!selectedCampaignId || isProposing || isActing}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {isProposing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Calculating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Propose Reallocation
-              </>
-            )}
-          </Button>
-        </div>
+            <Button
+              onClick={handlePropose}
+              disabled={!selectedCampaignId || isProposing || isActing}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isProposing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Calculating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Propose Reallocation
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* Top Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
+        <button
+          onClick={() => setActiveTab('reallocation')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all ${
+            activeTab === 'reallocation'
+              ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          Budget Reallocation
+        </button>
+        <button
+          onClick={() => setActiveTab('bandit')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-all ${
+            activeTab === 'bandit'
+              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/40'
+          }`}
+        >
+          <Zap className="w-4 h-4" />
+          Bandit Lab (LinUCB & ε-Greedy)
+        </button>
+      </div>
+
+      {activeTab === 'bandit' ? (
+        <BanditLab />
+      ) : (
+        <>
       {/* Role Alert for Analyst */}
       {isAnalyst && (
         <div className="flex items-center gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 text-xs">
@@ -628,6 +663,8 @@ export default function OptimizePage() {
             </Card>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

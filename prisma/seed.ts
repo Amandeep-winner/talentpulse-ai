@@ -108,6 +108,8 @@ async function main() {
       where: { experiment: { organizationId: orgId } },
     });
     await prisma.experiment.deleteMany({ where: { organizationId: orgId } });
+    await prisma.banditDecision.deleteMany({ where: { organizationId: orgId } });
+    await prisma.banditPolicy.deleteMany({ where: { organizationId: orgId } });
     await prisma.apiKey.deleteMany({ where: { organizationId: orgId } });
     await prisma.refreshToken.deleteMany({
       where: { user: { organizationId: orgId } },

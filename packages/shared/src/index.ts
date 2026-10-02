@@ -914,7 +914,166 @@ export const proposeOptimizationRequestSchema = z.object({
 });
 export type ProposeOptimizationRequest = z.infer<typeof proposeOptimizationRequestSchema>;
 
+/**
+ * Contextual Bandit Enums and Schemas (Task 20)
+ */
+export const BanditActionEnum = z.enum([
+  'increase_bid',
+  'decrease_bid',
+  'maintain_bid',
+  'increase_budget',
+  'decrease_budget',
+]);
+export type BanditAction = z.infer<typeof BanditActionEnum>;
 
+export const BanditAlgorithmEnum = z.enum([
+  'linucb',
+  'epsilon_greedy',
+  'random',
+  'static',
+]);
+export type BanditAlgorithm = z.infer<typeof BanditAlgorithmEnum>;
 
+export const banditContextInputSchema = z.object({
+  jobCategory: z.string().optional().default('Engineering'),
+  experienceYears: z.number().nonnegative().optional().default(3),
+  locationTier: z.number().min(0).max(1).optional().default(1),
+  ctr: z.number().nonnegative().optional().default(3.5),
+  cpa: z.number().nonnegative().optional().default(40.0),
+  convRate: z.number().nonnegative().optional().default(0.08),
+  remainingBudgetFrac: z.number().min(0).max(1).optional().default(0.75),
+  publisherId: z.string().optional(),
+});
+export type BanditContextInput = z.infer<typeof banditContextInputSchema>;
 
+export const banditDecideRequestSchema = z.object({
+  algorithm: BanditAlgorithmEnum.optional().default('linucb'),
+  publisherId: z.string().uuid().optional(),
+  campaignId: z.string().uuid().optional(),
+  context: banditContextInputSchema,
+});
+export type BanditDecideRequest = z.infer<typeof banditDecideRequestSchema>;
+
+export const banditDecisionResponseSchema = z.object({
+  decisionId: z.string().uuid(),
+  algorithm: BanditAlgorithmEnum,
+  action: BanditActionEnum,
+  scores: z.record(z.string(), z.number()).optional(),
+  propensity: z.number().optional().nullable(),
+  policyVersion: z.number(),
+  recommendation: z.unknown().optional(),
+});
+export type BanditDecisionResponse = z.infer<typeof banditDecisionResponseSchema>;
+
+export const banditRewardRequestSchema = z.object({
+  decisionId: z.string().uuid(),
+  reward: z.number().min(-2).max(2).optional(),
+  metrics: z
+    .object({
+      qualifiedApplications: z.number().nonnegative(),
+      refQa: z.number().positive().default(5.0),
+      spend: z.number().nonnegative(),
+      refSpend: z.number().positive().default(200.0),
+      mu: z.number().nonnegative().default(0.5),
+    })
+    .optional(),
+});
+export type BanditRewardRequest = z.infer<typeof banditRewardRequestSchema>;
+
+export const banditSimulationRequestSchema = z.object({
+  rounds: z.number().int().min(10).max(5000).default(500),
+  algorithms: z.array(BanditAlgorithmEnum).optional().default(['linucb', 'epsilon_greedy', 'random', 'static']),
+  seed: z.number().int().optional().default(42),
+});
+export type BanditSimulationRequest = z.infer<typeof banditSimulationRequestSchema>;
+
+export interface BanditSimulationPoint {
+  round: number;
+  [algoKey: string]: number;
+}
+
+export interface BanditSimulationSummary {
+  algorithm: BanditAlgorithm;
+  cumulativeReward: number;
+  averageReward: number;
+  regret: number;
+  actionCounts: Record<BanditAction, number>;
+}
+
+export interface BanditSimulationResponse {
+  rounds: number;
+  rewardHistory: BanditSimulationPoint[];
+  regretHistory: BanditSimulationPoint[];
+  summaries: BanditSimulationSummary[];
+}
+
+/**
+ * A/B Experiments Enums and Schemas (Task 20)
+ */
+export const ExperimentStatusEnum = z.enum(['DRAFT', 'RUNNING', 'STOPPED']);
+export type ExperimentStatus = z.infer<typeof ExperimentStatusEnum>;
+
+export const experimentVariantSchema = z.object({
+  key: z.string().min(1),
+  weight: z.number().positive().max(100),
+});
+export type ExperimentVariant = z.infer<typeof experimentVariantSchema>;
+
+export const createExperimentRequestSchema = z.object({
+  name: z.string().min(2, 'Experiment name must be at least 2 characters'),
+  hypothesis: z.string().optional().nullable(),
+  variants: z
+    .array(experimentVariantSchema)
+    .min(2, 'Experiment must have at least 2 variants')
+    .refine(
+      (vars) => {
+        const sum = vars.reduce((acc, v) => acc + v.weight, 0);
+        return Math.abs(sum - 100) < 0.1;
+      },
+      { message: 'Variant weights must sum to 100%' }
+    ),
+});
+export type CreateExperimentRequest = z.infer<typeof createExperimentRequestSchema>;
+
+export const updateExperimentStatusSchema = z.object({
+  status: ExperimentStatusEnum,
+});
+export type UpdateExperimentStatusRequest = z.infer<typeof updateExperimentStatusSchema>;
+
+export const assignExperimentRequestSchema = z.object({
+  subjectKey: z.string().min(1, 'subjectKey is required'),
+});
+export type AssignExperimentRequest = z.infer<typeof assignExperimentRequestSchema>;
+
+export const convertExperimentRequestSchema = z.object({
+  subjectKey: z.string().min(1, 'subjectKey is required'),
+});
+export type ConvertExperimentRequest = z.infer<typeof convertExperimentRequestSchema>;
+
+export interface VariantStats {
+  variant: string;
+  weight: number;
+  exposures: number;
+  conversions: number;
+  conversionRate: number;
+  lift?: number | null;
+  zScore?: number | null;
+  pValue?: number | null;
+  significant?: boolean;
+}
+
+export interface ExperimentResultsResponse {
+  id: string;
+  organizationId: string;
+  name: string;
+  hypothesis?: string | null;
+  status: ExperimentStatus;
+  variants: ExperimentVariant[];
+  totalExposures: number;
+  totalConversions: number;
+  stats: VariantStats[];
+  hasSufficientData: boolean;
+  winner?: string | null;
+  createdAt: string;
+}
 

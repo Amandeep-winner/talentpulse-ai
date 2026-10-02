@@ -18,6 +18,7 @@ import {
   Settings,
   Activity,
   LogOut,
+  FlaskConical,
 } from 'lucide-react';
 import { Role } from '@talentpulse/shared';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,7 @@ export const navigationItems: NavItem[] = [
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'AI Analyst', href: '/ai', icon: Sparkles },
   { name: 'Optimize', href: '/optimize', icon: Sliders, roles: ['ADMIN', 'RECRUITER'] },
+  { name: 'Experiments', href: '/experiments', icon: FlaskConical },
   { name: 'Forecast', href: '/forecast', icon: TrendingUp },
   { name: 'Knowledge', href: '/knowledge', icon: BookOpen },
   { name: 'Integrations', href: '/integrations', icon: Network, roles: ['ADMIN'] },

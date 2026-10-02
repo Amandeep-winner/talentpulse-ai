@@ -149,7 +149,20 @@ This document tracks implementation progress across all 34 tasks.
   - Re-enabled `campaign_recommendation` intent in `runAiPipeline`, generating natural language proposals and Recharts bar charts.
   - Built Next.js `/optimize` page with campaign picker, side-by-side current vs recommended allocation Recharts bar charts, heuristic diagnostics table, recommendation audit trail, and role-aware Approve/Reject controls.
   - Verified with 15 unit/integration tests in `tests/optimization.test.ts` and 4 web tests in `tests/optimize.test.tsx` (total 235/235 passing tests across monorepo).
-- [ ] Task 20: Contextual bandit + A/B experiments
+- [x] Task 20: Contextual bandit + A/B experiments
+  - Built pure TypeScript linear algebra library in `matrix.ts` featuring Sherman-Morrison rank-1 inverse updates, Gauss-Jordan matrix inversion, and Frobenius distance numerical drift validation.
+  - Implemented 12-dimensional contextual feature extraction encoding job seniority, job department, publisher category, hour of day, and day of week into normalized context vectors.
+  - Implemented disjoint LinUCB contextual bandit policy with Sherman-Morrison O(d^2) updates, ridge parameter lambda=1.0, and exploration parameter alpha=0.8.
+  - Implemented epsilon-greedy contextual policy with decaying exploration rate from 10% to 2% and ridge regression parameter estimators.
+  - Built Random and Static baseline policies and offline simulation engine with deterministic Mulberry32 PRNG noise.
+  - Implemented A/B experiments framework with polynomial normal CDF approximation, two-sample two-proportion z-tests, relative lift calculations, and minimum-sample guards.
+  - Implemented deterministic variant assignment via MD5 hash modulo 100 mapped to variant weight distributions.
+  - Mounted bandit endpoints at `/api/optimization/bandit` and experiments endpoints at `/api/experiments`.
+  - Built interactive Bandit Lab in `/optimize` featuring cumulative reward curves, cumulative regret curves, action distribution bar charts, and reset controls.
+  - Built A/B Experiments management dashboard in `/experiments` with variant metrics, statistical significance badges, deterministic test sandbox, and new experiment modal.
+  - Added "Experiments" navigation item to web sidebar.
+  - Formatted `docs/optimization.md` with complete mathematical formulations and proofs.
+  - Verified with 9 math unit tests, 10 API integration tests, 3 Bandit Lab web tests, and 4 Experiments web tests (261/261 tests passing across monorepo).
 - [ ] Task 21: Predictive intelligence (ML service)
 - [ ] Task 22: Forecasting
 - [ ] Task 23: Mock ATS
@@ -183,7 +196,7 @@ This document tracks implementation progress across all 34 tasks.
 - [x] Ask TalentPulse: diagnosis, SQL view, chart, recommendations
 - [x] Text-to-SQL guarded by AST validation, read-only role, tenant GUC, timeout
 - [x] Optimizer (rules + scoring + constrained allocation) with approve/reject flow
-- [ ] Bandit lab (LinUCB, epsilon-greedy, baselines) + A/B experiments with significance test
+- [x] Bandit lab (LinUCB, epsilon-greedy, baselines) + A/B experiments with significance test
 - [ ] ML predictions (application/fill probability, risk) with evaluation metrics
 - [ ] Forecasting with backtest metrics and shortfall alerts
 - [ ] Mock ATS + signed webhooks + retries + dead-letter + replay

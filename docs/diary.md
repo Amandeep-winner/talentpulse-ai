@@ -517,3 +517,67 @@ Verified with 15 unit and integration tests in `apps/api/tests/optimization.test
 Verified with 4 tests in `apps/web/tests/optimize.test.tsx` verifying UI rendering, proposal generation, approval flow, rejection flow, and Analyst read-only alerts.
 Monorepo verification gate passed with 0 lint errors, 0 type errors, 235/235 passing tests across 35 test suites, and clean Next.js production builds.
 
+## 2026-10-02 - Task 20: Contextual Bandit Engine (LinUCB, Epsilon-Greedy) and A/B Testing Framework
+
+### Context
+Recruitment advertising campaigns face dynamic publisher performance drift, fluctuating bid prices, and non-stationary conversion rates across diverse job categories and temporal periods.
+Static rule engines and batch reallocations adapt slowly to shifting publisher efficiencies and cannot explore uncertain options systematically.
+Conversely, unguided multi-armed bandits ignore requisition context such as job seniority, engineering department, time of day, and day of week.
+Furthermore, evaluating novel campaign strategies and channel allocations requires an empirical A/B experimentation platform with deterministic user variant assignment, conversion tracking, and statistical hypothesis testing (two-sample z-tests).
+The system requires a robust, pure TypeScript linear algebra and bandit engine supporting LinUCB with Sherman-Morrison rank-1 updates, decaying epsilon-greedy, and baseline policies, alongside an interactive simulation lab and A/B experiment dashboard.
+
+### Decision
+Architect and implement the contextual bandit and experimentation modules in pure TypeScript:
+1. Pure Matrix Algebra (`apps/api/src/modules/optimization/bandit/matrix.ts`):
+Implemented vector dot products, outer products, matrix-vector multiplications, scalar additions, and identity matrices without external heavy C++ dependencies.
+Implemented Gauss-Jordan elimination with partial pivoting for full matrix inversion.
+Implemented Sherman-Morrison rank-1 inverse update formula allowing O(d^2) updates of the precision matrix A_inv = (A + x x^T)^(-1) rather than O(d^3) re-inversion.
+Implemented Frobenius distance checks ensuring numerical drift between Sherman-Morrison rank-1 updates and direct Gauss-Jordan matrix inversion remains below 1e-5.
+2. Context Vectorization & Arm Formulation (`types.ts`, `context.ts`):
+Designed a 12-dimensional normalized feature vector encoding job seniority (entry, mid, senior, lead/exec), job department (engineering, product, sales, marketing, other), publisher category (general, technical, niche), and cyclical temporal indicators (hour of day normalized by 24, day of week normalized by 7).
+Configured 5 discrete publisher arms matching the seeded publisher network (JobBoard Prime, SocialReach, SearchHire, AggregatorX, ReferralNet).
+Formulated bounded scalar rewards r = 1.0 * application + 2.0 * qualified - 0.5 * normalized_spend, clipped strictly to [-2.0, 2.0].
+3. Disjoint LinUCB Policy (`linucb.ts`):
+Maintained per-arm precision matrices A_a and reward vectors b_a initialized with ridge regularization parameter lambda=1.0.
+Computed ridge regression coefficient vectors theta_hat_a = A_a^(-1) b_a.
+Evaluated upper confidence bounds p_a = theta_hat_a^T x + alpha * sqrt(x^T A_a^(-1) x) with exploration parameter alpha=0.8.
+Updated parameters upon reward receipt in O(d^2) operations via Sherman-Morrison rank-1 updates.
+4. Epsilon-Greedy Policy (`epsilonGreedy.ts`):
+Implemented contextual ridge regression estimator predicting expected reward given context x.
+Explored uniformly at random with probability epsilon and exploited arm with maximum predicted reward with probability 1 - epsilon.
+Decayed epsilon smoothly from 0.10 to 0.02 over time to transition from exploration to exploitation.
+5. Baseline Policies & Offline Simulator (`baselines.ts`, `simulation.ts`):
+Implemented Random and Static baseline policies.
+Built offline simulation runner with deterministic Mulberry32 pseudo-random number generator for reproducible policy comparisons.
+Computed cumulative rewards, cumulative regret against an oracle policy, and action selection distributions over arbitrary round horizons.
+6. A/B Experimentation Engine (`apps/api/src/modules/optimization/experiments/`):
+Implemented Abramowitz and Stegun polynomial approximation of the standard normal cumulative distribution function (normalCdf) with maximum error < 7.5e-8.
+Implemented two-sample pooled two-proportion z-tests computing z-scores, p-values, 95% confidence intervals, and relative conversion lift.
+Guarded against false discovery by returning not significant when sample size per variant is below 30.
+Implemented deterministic variant hashing using MD5 hash of (experimentId:subjectId) modulo 100 mapped to cumulative variant weight boundaries.
+7. API & Route Mounting (`bandit.routes.ts`, `experiments.routes.ts`):
+Mounted contextual bandit routes at `/api/optimization/bandit` (`POST /decide`, `POST /reward`, `GET /state`, `POST /reset`, `POST /simulate`).
+Mounted A/B experiment routes at `/api/experiments` (`POST /`, `GET /`, `GET /:id`, `PATCH /:id/status`, `POST /:id/assign`, `POST /:id/convert`).
+Enforced RBAC requiring ADMIN role for policy reset and experiment status changes.
+8. Interactive UI & Visualization:
+Built Bandit Lab tab in `/optimize` featuring interactive round controls, policy selection checkboxes, Recharts line charts (cumulative reward and cumulative regret), Recharts action distribution bar chart, KPI summary cards, and policy reset button.
+Built Experiments Dashboard in `/experiments` with experiment status filters, variant performance comparison tables, statistical significance badges, deterministic variant assignment sandbox, and new experiment modal.
+Added "Experiments" navigation item with Flask icon to the main sidebar.
+9. Documentation (`docs/optimization.md`):
+Authored formal mathematical documentation covering problem formulation, LinUCB confidence intervals, Sherman-Morrison derivation, regret bounds, two-proportion z-test statistics, and verification gates.
+
+### Alternative
+Relying on external Python microservices for matrix operations and bandit updates would introduce inter-process network latency into high-frequency decision loops.
+Running batch regressions without Sherman-Morrison rank-1 updates would incur O(d^3) overhead per recommendation round.
+
+### Why
+Pure TypeScript implementation enables low-latency in-process arm decisions and fast offline simulations directly within the API server.
+Sherman-Morrison rank-1 updates provide an order-of-magnitude algorithmic speedup while maintaining strict mathematical equivalence verified by Frobenius distance tests.
+Deterministic MD5 hashing guarantees that users experience consistent experiment variants across sessions without requiring database lookup roundtrips on every impression.
+
+### Result
+Verified with 9 mathematical unit tests in `apps/api/tests/bandit-math.test.ts` validating Sherman-Morrison Frobenius drift < 1e-5, LinUCB reward convergence > Random over 2,000 rounds, epsilon decay, state serialization roundtrips, normal CDF accuracy, z-test significance, and variant distribution uniformity.
+Verified with 10 API integration tests in `apps/api/tests/bandit-api.test.ts` verifying decide, reward, state inspection, admin reset, simulation policy ordering (LinUCB > epsilon-greedy > Random), experiment creation, status modification, deterministic assignment, conversion tracking, and statistical significance calculations.
+Verified with 3 web tests in `apps/web/tests/bandit-lab.test.tsx` and 4 web tests in `apps/web/tests/experiments.test.tsx`.
+Monorepo verification gate passed with 0 lint errors, 0 type errors, 261/261 passing tests across 39 test suites, and clean Next.js production builds.
+
