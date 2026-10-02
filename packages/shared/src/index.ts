@@ -306,6 +306,47 @@ export const candidateSearchResponseSchema = z.object({
 export type CandidateSearchResponse = z.infer<typeof candidateSearchResponseSchema>;
 
 /**
+ * Hybrid Candidate-Job Matching Schemas
+ */
+export const scoreBreakdownSchema = z.object({
+  semantic: z.number().min(0).max(1),
+  skills: z.number().min(0).max(1),
+  experience: z.number().min(0).max(1),
+  location: z.number().min(0).max(1),
+  education: z.number().min(0).max(1),
+  preferences: z.number().min(0).max(1),
+});
+
+export type ScoreBreakdown = z.infer<typeof scoreBreakdownSchema>;
+
+export const candidateMatchResultSchema = z.object({
+  candidateId: z.string().uuid(),
+  name: z.string(),
+  email: z.string(),
+  location: z.string(),
+  experienceYears: z.number(),
+  skills: z.array(z.string()),
+  remoteOk: z.boolean(),
+  score: z.number().min(0).max(1),
+  breakdown: scoreBreakdownSchema,
+  reasons: z.array(z.string()),
+  gaps: z.array(z.string()),
+  confidence: z.number().min(0).max(1),
+});
+
+export type CandidateMatchResult = z.infer<typeof candidateMatchResultSchema>;
+
+export const jobMatchesResponseSchema = z.object({
+  jobId: z.string().uuid(),
+  jobTitle: z.string(),
+  totalMatches: z.number(),
+  recommendationId: z.string().uuid().optional(),
+  matches: z.array(candidateMatchResultSchema),
+});
+
+export type JobMatchesResponse = z.infer<typeof jobMatchesResponseSchema>;
+
+/**
  * Applications Enums and Schemas
  */
 export const ApplicationStatusEnum = z.enum([

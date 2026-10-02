@@ -39,6 +39,19 @@ export async function updateJobEmbedding(jobId: string, embedding: number[]): Pr
 }
 
 /**
+ * Fetches the embedding vector for a Job as a numeric array
+ */
+export async function getJobEmbedding(jobId: string): Promise<number[] | null> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ vec: string | null }>>(
+    `SELECT embedding::text AS vec FROM "Job" WHERE id = $1::uuid`,
+    jobId,
+  );
+  if (!rows[0] || !rows[0].vec) return null;
+  const str = rows[0].vec.replace(/\[|\]/g, '');
+  return str.split(',').map((n) => parseFloat(n));
+}
+
+/**
  * Updates embedding on a Candidate record using raw SQL
  */
 export async function updateCandidateEmbedding(candidateId: string, embedding: number[]): Promise<void> {

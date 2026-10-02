@@ -239,4 +239,45 @@ Verified with 6 integration tests covering input validation, semantic relevance 
 Verified with 2 React Testing Library tests confirming semantic search input, prompt suggestion clicks, API invocation, similarity chip rendering, and view reset interactions.
 Monorepo verification gate passed with 0 lint errors, 0 type errors, 119/119 passing tests across all workspaces, and zero production build warnings.
 
+---
+
+## Task 13 - Explainable Hybrid Candidate Ranking Engine with Audit Trails and Multi-Factor Sub-Score Breakdown
+
+### Problem
+Recruiters making hiring recommendations cannot rely solely on opaque black-box neural vector similarities or crude keyword filters.
+Pure vector embeddings capture semantic intent but frequently miss hard constraints, such as mandatory certifications, specific years of professional experience, location requirements, and salary ceilings.
+Conversely, strict boolean filters eliminate high-potential adjacent talent who might fall slightly short in one non-critical dimension but excel across all other requisites.
+Furthermore, enterprise hiring standards require transparent explainability to justify candidate shortlisting, prevent algorithmic bias, eliminate disparate impact, and provide immutable audit records for compliance.
+Scoring algorithms must also operate strictly on job-relevant candidate qualifications, entirely quarantined from protected demographic attributes such as age, gender, race, or photo.
+
+### Decision
+Architect a modular, multi-factor hybrid candidate ranking engine governed by a pure, deterministic ranker function.
+Define an explicit scoring configuration (`apps/api/src/modules/matching/matching.config.ts`) with strictly normalized weights summing exactly to 1.0: Semantic Fit (0.35), Skills Alignment (0.25), Experience Match (0.15), Location Compatibility (0.10), Education Level (0.10), and Role Preferences (0.05).
+Implement isolated, unit-tested sub-scorers for each evaluation dimension:
+`scoreSemantic` rescales cosine similarities from [-1, 1] into a normalized [0, 1] interval.
+`scoreSkills` canonicalizes candidate skills against a technical taxonomy with aliases (such as "golang" to "Go" and "k8s" to "Kubernetes"), scoring required skills at 80% weight and preferred skills at 20% weight while producing explicit explainable reason strings and gap notifications.
+`scoreExperience` gives full 1.0 credit when candidate years equal or exceed minimum requirements, applying a linear ramp for junior candidates and producing natural language justifications.
+`scoreLocation` grants 1.0 for matching cities or remote candidates, 0.5 for relocation willingness, and 0.0 otherwise.
+`scoreEducation` enforces an educational ladder hierarchy (Doctorate, Master's, Bachelor's, Associate's, High School) with bonus incentives for preferred certifications.
+`scorePreferences` checks employment type compatibility and aligns candidate salary expectations against budget ceilings.
+Enforce non-discriminatory algorithmic safeguards by passing only sanitized `ScoringCandidateInput` data structures to the ranking pipeline, completely excluding candidate names, emails, ages, genders, and photos.
+Calibrate match confidence scores dynamically based on the statistical separation margin between the candidate and nearest lower-tier competitors.
+Implement `GET /api/jobs/:id/matches?limit=20` to retrieve top candidates, compute explainable hybrid ranks, and persist an immutable `Recommendation` audit record in PostgreSQL with model metadata, input hashes, and full scoring logs.
+Build an interactive "AI Matches" tab in Next.js on `/jobs/[id]` featuring candidate rank cards, fit badges, confidence indicators, reason checkmarks, gap warnings, an interactive 6-factor score breakdown drawer, and client-side CSV export functionality.
+
+### Alternative
+Utilize an end-to-end uninterpretable black-box cross-encoder LLM to rank candidates, or sort purely by pgvector cosine distance without multidimensional sub-scores or audit trails.
+
+### Why
+Black-box LLM ranking provides zero mathematical consistency, suffers from prompt drift, hallucinates qualifications, and offers no auditable explanation for adverse employment decisions.
+Sorting purely by vector distance fails to enforce critical hiring constraints like experience thresholds and mandatory skills.
+The hybrid ranking architecture combines the best of semantic recall and deterministic rule scoring, ensuring 100% reproducibility and mathematical transparency.
+Persisting immutable audit recommendation records satisfies compliance requirements and enables longitudinal quality tracking.
+
+### Result
+Verified with 21 Jest unit and integration tests validating weight normalizations, sub-scorers, monotonicity, canonical skill aliases, protected attribute safeguards, API authentication, limit validation, and database audit persistence.
+Verified with React Testing Library tests confirming tab switching, API communication, score badge rendering, reasons, gaps, and interactive breakdown toggling.
+Full monorepo verification gate passed with 0 lint errors, 0 type errors, 141/141 passing tests across all workspaces, and zero production build warnings.
+
+
 

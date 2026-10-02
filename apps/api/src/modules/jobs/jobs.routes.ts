@@ -3,11 +3,16 @@ import { z } from 'zod';
 import { createJobRequestSchema, updateJobRequestSchema, jobFilterQuerySchema } from '@talentpulse/shared';
 import { jobsController } from './jobs.controller';
 import { embeddingController } from '../embeddings/embedding.controller';
+import { matchingController } from '../matching/matching.controller';
 import { authenticate, authorize } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 
 const idParamSchema = z.object({
   id: z.string().uuid('Invalid job ID format'),
+});
+
+const matchesQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(50).default(20),
 });
 
 const router = Router();
@@ -18,6 +23,14 @@ router.use(authenticate);
 router.get('/', validate({ query: jobFilterQuerySchema }), (req, res, next) => {
   jobsController.list(req, res, next);
 });
+
+router.get(
+  '/:id/matches',
+  validate({ params: idParamSchema, query: matchesQuerySchema }),
+  (req, res, next) => {
+    matchingController.getJobMatches(req, res, next);
+  },
+);
 
 router.get('/:id', validate({ params: idParamSchema }), (req, res, next) => {
   jobsController.get(req, res, next);

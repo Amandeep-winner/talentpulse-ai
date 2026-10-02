@@ -87,7 +87,15 @@ This document tracks implementation progress across all 34 tasks.
   - Added `candidateSearchQuerySchema` and `candidateSearchResultItemSchema` in `@talentpulse/shared`.
   - Built interactive Semantic Vector Search card and table integration on Next.js `/candidates` frontend with prompt suggestions, match percentages, and similarity chips.
   - Verified with 6 API integration tests and 2 React Testing Library frontend tests.
-- [ ] Task 13: Hybrid candidate ranking (explainable)
+- [x] Task 13: Hybrid candidate ranking (explainable)
+  - Implemented multi-factor hybrid scoring configuration strictly normalized to 1.0 (semantic 0.35, skills 0.25, experience 0.15, location 0.10, education 0.10, preferences 0.05).
+  - Built isolated sub-scorers with canonical skill aliases, education ladders, and experience ramps producing natural-language reasons and gaps.
+  - Enforced algorithmic safeguards via `ScoringCandidateInput` strictly excluding protected attributes (name, email, age, gender, photo).
+  - Implemented dynamic confidence score calibration based on statistical separation margins.
+  - Built `GET /api/jobs/:id/matches?limit=20` persisting immutable `Recommendation` audit records in PostgreSQL.
+  - Authored Architectural Decision Record `ADR-001-hybrid-candidate-ranking.md`.
+  - Built Next.js `/jobs/[id]` "AI Matches" tab with fit badges, confidence chips, reasons, gaps, 6-factor score breakdown drawer, and client-side CSV export.
+  - Verified with 21 Jest unit/integration tests and 1 React Testing Library web test.
 - [ ] Task 14: RAG knowledge system
 - [ ] Task 15: Ask TalentPulse (conversational analyst, v1 pipeline)
 - [ ] Task 16: Safe text-to-SQL
