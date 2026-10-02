@@ -14,6 +14,7 @@ import {
   calculateHireRate,
   calculateCPC,
   calculateCPA,
+  calculateCPQA,
   calculateCPH,
   calculateDelta,
 } from './metrics';
@@ -341,87 +342,240 @@ export class AnalyticsService {
     organizationId: string,
     options: AnalyticsQueryOptions,
   ): Promise<PublisherPerformance[]> {
-    const { from, to } = parseDateRange(options);
+    const to = options.to ? new Date(options.to) : new Date();
+    const from = options.from
+      ? new Date(options.from)
+      : new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days default
+    const durationMs = Math.max(24 * 60 * 60 * 1000, to.getTime() - from.getTime());
+    const previousTo = new Date(from.getTime());
+    const previousFrom = new Date(from.getTime() - durationMs);
 
-    const [publishers, events, spends] = await Promise.all([
-      prisma.publisher.findMany({
-        where: { organizationId },
-      }),
-      prisma.campaignEvent.findMany({
-        where: {
-          organizationId,
-          ...(options.campaignId ? { campaignId: options.campaignId } : {}),
-          timestamp: { gte: from, lte: to },
-        },
-        select: {
-          publisherId: true,
-          eventType: true,
-          quantity: true,
-          qualifiedQuantity: true,
-        },
-      }),
-      prisma.campaignSpend.findMany({
-        where: {
-          organizationId,
-          ...(options.campaignId ? { campaignId: options.campaignId } : {}),
-          date: { gte: from, lte: to },
-        },
-        select: { publisherId: true, amount: true },
-      }),
-    ]);
+    const cacheKey = {
+      type: 'publishers',
+      from: from.toISOString(),
+      to: to.toISOString(),
+      campaignId: options.campaignId || 'all',
+    };
 
-    const performanceMap = new Map<string, PublisherPerformance>();
+    const cachedRes = await cached(organizationId, 'analytics', cacheKey, 60, async () => {
+      const [publishers, currentEvents, currentSpends, prevEvents, prevSpends] = await Promise.all([
+        prisma.publisher.findMany({
+          where: { organizationId },
+        }),
+        prisma.campaignEvent.findMany({
+          where: {
+            organizationId,
+            ...(options.campaignId ? { campaignId: options.campaignId } : {}),
+            timestamp: { gte: from, lte: to },
+          },
+          select: {
+            publisherId: true,
+            eventType: true,
+            quantity: true,
+            qualifiedQuantity: true,
+          },
+        }),
+        prisma.campaignSpend.findMany({
+          where: {
+            organizationId,
+            ...(options.campaignId ? { campaignId: options.campaignId } : {}),
+            date: { gte: from, lte: to },
+          },
+          select: { publisherId: true, amount: true },
+        }),
+        prisma.campaignEvent.findMany({
+          where: {
+            organizationId,
+            ...(options.campaignId ? { campaignId: options.campaignId } : {}),
+            timestamp: { gte: previousFrom, lte: previousTo },
+          },
+          select: {
+            publisherId: true,
+            eventType: true,
+            quantity: true,
+            qualifiedQuantity: true,
+          },
+        }),
+        prisma.campaignSpend.findMany({
+          where: {
+            organizationId,
+            ...(options.campaignId ? { campaignId: options.campaignId } : {}),
+            date: { gte: previousFrom, lte: previousTo },
+          },
+          select: { publisherId: true, amount: true },
+        }),
+      ]);
 
-    for (const p of publishers) {
-      performanceMap.set(p.id, {
-        publisherId: p.id,
-        publisherName: p.name,
-        publisherType: p.type as PublisherType,
-        impressions: 0,
-        clicks: 0,
-        applications: 0,
-        qualifiedApplications: 0,
-        interviews: 0,
-        hires: 0,
-        spend: 0,
-        ctr: null,
-        applicationRate: null,
-        cpc: null,
-        cpa: null,
-        cph: null,
-      });
-    }
-
-    for (const ev of events) {
-      const p = performanceMap.get(ev.publisherId);
-      if (p) {
-        if (ev.eventType === 'IMPRESSION') p.impressions += ev.quantity;
-        if (ev.eventType === 'CLICK') p.clicks += ev.quantity;
-        if (ev.eventType === 'APPLICATION') {
-          p.applications += ev.quantity;
-          p.qualifiedApplications += ev.qualifiedQuantity;
+      const prevMap = new Map<
+        string,
+        {
+          impressions: number;
+          clicks: number;
+          applications: number;
+          qualifiedApplications: number;
+          interviews: number;
+          hires: number;
+          spend: number;
         }
-        if (ev.eventType === 'INTERVIEW') p.interviews += ev.quantity;
-        if (ev.eventType === 'HIRE') p.hires += ev.quantity;
+      >();
+
+      for (const p of publishers) {
+        prevMap.set(p.id, {
+          impressions: 0,
+          clicks: 0,
+          applications: 0,
+          qualifiedApplications: 0,
+          interviews: 0,
+          hires: 0,
+          spend: 0,
+        });
       }
-    }
 
-    for (const sp of spends) {
-      const p = performanceMap.get(sp.publisherId);
-      if (p) {
-        p.spend += Number(sp.amount);
+      for (const ev of prevEvents) {
+        const p = prevMap.get(ev.publisherId);
+        if (p) {
+          if (ev.eventType === 'IMPRESSION') p.impressions += ev.quantity;
+          if (ev.eventType === 'CLICK') p.clicks += ev.quantity;
+          if (ev.eventType === 'APPLICATION') {
+            p.applications += ev.quantity;
+            p.qualifiedApplications += ev.qualifiedQuantity;
+          }
+          if (ev.eventType === 'INTERVIEW') p.interviews += ev.quantity;
+          if (ev.eventType === 'HIRE') p.hires += ev.quantity;
+        }
       }
-    }
 
-    for (const p of performanceMap.values()) {
-      p.ctr = calculateCTR(p.clicks, p.impressions);
-      p.applicationRate = calculateApplicationRate(p.applications, p.clicks);
-      p.cpc = calculateCPC(p.spend, p.clicks);
-      p.cpa = calculateCPA(p.spend, p.applications);
-      p.cph = calculateCPH(p.spend, p.hires);
-    }
+      for (const sp of prevSpends) {
+        const p = prevMap.get(sp.publisherId);
+        if (p) {
+          p.spend += Number(sp.amount);
+        }
+      }
 
-    return Array.from(performanceMap.values()).sort((a, b) => b.applications - a.applications);
+      const performanceMap = new Map<string, PublisherPerformance>();
+
+      for (const p of publishers) {
+        performanceMap.set(p.id, {
+          publisherId: p.id,
+          publisherName: p.name,
+          publisherType: p.type as PublisherType,
+          impressions: 0,
+          clicks: 0,
+          applications: 0,
+          qualifiedApplications: 0,
+          interviews: 0,
+          hires: 0,
+          spend: 0,
+          ctr: null,
+          applicationRate: null,
+          cpc: null,
+          cpa: null,
+          cpqa: null,
+          cph: null,
+          rank: 1,
+          trends: {
+            ctrDelta: null,
+            cpcDelta: null,
+            cpaDelta: null,
+            cpqaDelta: null,
+            cphDelta: null,
+            impressionsDelta: null,
+            clicksDelta: null,
+            applicationsDelta: null,
+            spendDelta: null,
+          },
+          funnel: {
+            impressions: 0,
+            clicks: 0,
+            applications: 0,
+            qualifiedApplications: 0,
+            interviews: 0,
+            hires: 0,
+          },
+        });
+      }
+
+      for (const ev of currentEvents) {
+        const p = performanceMap.get(ev.publisherId);
+        if (p) {
+          if (ev.eventType === 'IMPRESSION') p.impressions += ev.quantity;
+          if (ev.eventType === 'CLICK') p.clicks += ev.quantity;
+          if (ev.eventType === 'APPLICATION') {
+            p.applications += ev.quantity;
+            p.qualifiedApplications += ev.qualifiedQuantity;
+          }
+          if (ev.eventType === 'INTERVIEW') p.interviews += ev.quantity;
+          if (ev.eventType === 'HIRE') p.hires += ev.quantity;
+        }
+      }
+
+      for (const sp of currentSpends) {
+        const p = performanceMap.get(sp.publisherId);
+        if (p) {
+          p.spend += Number(sp.amount);
+        }
+      }
+
+      for (const p of performanceMap.values()) {
+        p.ctr = calculateCTR(p.clicks, p.impressions);
+        p.applicationRate = calculateApplicationRate(p.applications, p.clicks);
+        p.cpc = calculateCPC(p.spend, p.clicks);
+        p.cpa = calculateCPA(p.spend, p.applications);
+        p.cpqa = calculateCPQA(p.spend, p.qualifiedApplications);
+        p.cph = calculateCPH(p.spend, p.hires);
+
+        p.funnel = {
+          impressions: p.impressions,
+          clicks: p.clicks,
+          applications: p.applications,
+          qualifiedApplications: p.qualifiedApplications,
+          interviews: p.interviews,
+          hires: p.hires,
+        };
+
+        const prev = prevMap.get(p.publisherId);
+        if (prev) {
+          const prevCtr = calculateCTR(prev.clicks, prev.impressions);
+          const prevCpc = calculateCPC(prev.spend, prev.clicks);
+          const prevCpa = calculateCPA(prev.spend, prev.applications);
+          const prevCpqa = calculateCPQA(prev.spend, prev.qualifiedApplications);
+          const prevCph = calculateCPH(prev.spend, prev.hires);
+
+          p.trends = {
+            ctrDelta: calculateDelta(p.ctr, prevCtr),
+            cpcDelta: calculateDelta(p.cpc, prevCpc),
+            cpaDelta: calculateDelta(p.cpa, prevCpa),
+            cpqaDelta: calculateDelta(p.cpqa, prevCpqa),
+            cphDelta: calculateDelta(p.cph, prevCph),
+            impressionsDelta: calculateDelta(p.impressions, prev.impressions),
+            clicksDelta: calculateDelta(p.clicks, prev.clicks),
+            applicationsDelta: calculateDelta(p.applications, prev.applications),
+            spendDelta: calculateDelta(p.spend, prev.spend),
+          };
+        }
+      }
+
+      // Ranking: publishers with lowest CPA come first.
+      // If CPA is null or equal, rank by applications descending, then clicks descending.
+      const rankedList = Array.from(performanceMap.values()).sort((a, b) => {
+        if (a.cpa !== null && b.cpa !== null) {
+          if (a.cpa !== b.cpa) return a.cpa - b.cpa;
+          return b.applications - a.applications;
+        }
+        if (a.cpa !== null && b.cpa === null) return -1;
+        if (a.cpa === null && b.cpa !== null) return 1;
+        if (b.applications !== a.applications) return b.applications - a.applications;
+        return b.clicks - a.clicks;
+      });
+
+      rankedList.forEach((p, idx) => {
+        p.rank = idx + 1;
+      });
+
+      return rankedList;
+    });
+
+    return cachedRes.data;
   }
 
   async getCampaigns(

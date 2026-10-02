@@ -133,7 +133,13 @@ This document tracks implementation progress across all 34 tasks.
   - Mounted `POST /api/campaigns/:id/simulate` with ADMIN and RECRUITER role enforcement, writing idempotent event and spend records to PostgreSQL.
   - Built Next.js campaign detail page at `/campaigns/[id]` with KPI summary cards, Recharts allocation donut chart, interactive allocation editor modal validating 100% sum, and simulation runner dialog.
   - Verified with 11 API tests in `tests/simulation.test.ts` and 2 web tests in `tests/campaign-detail.test.tsx` (211/211 tests passing across monorepo).
-- [ ] Task 18: Campaign analytics
+- [x] Task 18: Campaign analytics
+  - Enriched `@talentpulse/shared` with `PublisherPerformanceTrends`, `PublisherFunnelMetrics`, `cpqa`, and `rank`.
+  - Upgraded `getPublishers` in `analytics.service.ts` to compute current vs prior period (last 7d vs prior 7d) velocity deltas for CTR, CPC, CPA, CPQA, CPH, impressions, clicks, applications, and spend.
+  - Implemented CPA-ascending efficiency ranking algorithm with application and click tiebreakers and 60s Redis caching.
+  - Built interactive Performance & Analytics tab on `/campaigns/[id]` with time horizon selectors, publisher performance benchmark cards, comparative Recharts bar chart, efficiency ranking table, and funnel stage progression breakdown.
+  - Enhanced `/analytics` channels tab with publisher cards and CPQA columns.
+  - Verified with 4 integration tests in `tests/campaign-analytics.test.ts` and updated web suites in `tests/campaign-detail.test.tsx` and `tests/analytics.test.tsx` (total 216/216 passing tests across monorepo).
 - [ ] Task 19: Optimization engine (deterministic -> scored -> allocation)
 - [ ] Task 20: Contextual bandit + A/B experiments
 - [ ] Task 21: Predictive intelligence (ML service)

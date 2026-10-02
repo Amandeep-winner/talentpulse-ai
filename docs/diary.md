@@ -431,3 +431,43 @@ Idempotent database upserts prevent runaway data duplication when simulations ar
 Verified with 11 unit and integration tests in `apps/api/tests/simulation.test.ts` validating Mulberry32 determinism, concave diminishing returns monotonicity, bid effects on impression reach and clearing CPC, negative and positive conversion drift, funnel invariants across all standard publisher profiles, RBAC authorization, and idempotent event ingestion.
 Verified with 2 React Testing Library tests in `apps/web/tests/campaign-detail.test.tsx` verifying campaign metadata rendering, donut chart display, channel tables, and simulation dialog execution.
 Monorepo verification gate passed with 0 lint errors, 0 type errors, 211/211 passing tests across 32 test suites, and clean Next.js production builds.
+
+---
+
+## Task 18 - Campaign & Publisher Performance Analytics with 7-Day Trend Deltas
+
+### Problem
+Recruiters and marketing campaign managers need to evaluate publisher performance across multiple funnel dimensions simultaneously (impressions, clicks, applications, qualified applications, interviews, and hires).
+Without real-time unit economics (CTR, CPC, CPA, CPQA, and CPH), organizations risk over-allocating capital to channels that generate deceptive raw application volume with low qualification rates.
+Furthermore, static snapshot numbers do not reveal whether publisher efficiency is improving, stagnating, or degrading over time.
+Talent acquisition teams require continuous velocity indicators (such as 7-day vs prior 7-day trend deltas) to quickly catch degrading channels (like SocialReach's rising CPA) and double down on high-performing sources (like AggregatorX and ReferralNet).
+Finally, enterprise campaign pages need dedicated performance tabs, comparative bar charts, and publisher ranking tables with strict empty-data resilience.
+
+### Decision
+Architect a publisher performance analytics engine supporting trend deltas, ranking, and multi-tenant campaign isolation.
+First, enrich `@talentpulse/shared` with `PublisherPerformanceTrends` (tracking percentage deltas for CTR, CPC, CPA, CPQA, CPH, impressions, clicks, applications, and spend), `PublisherFunnelMetrics`, `cpqa`, and `rank`.
+Second, update `getPublishers` in `apps/api/src/modules/analytics/analytics.service.ts` to evaluate the current analysis window against the immediately preceding baseline window of identical duration (defaulting to 7 days).
+Calculate Cost Per Qualified Application (`calculateCPQA`) alongside CTR, CPC, CPA, and CPH.
+Compute directional trend deltas between the current and previous evaluation periods using `calculateDelta` with division-by-zero protection.
+Implement an efficiency-first ranking algorithm sorting publishers by Cost Per Application (CPA) ascending, with tiebreakers on application volume and clicks.
+Cache publisher analytics in Redis for 60 seconds using tenant-scoped versioned keys (`tp:{orgId}:v{ns}:analytics:{hash(params)}`).
+Third, build an interactive Performance & Analytics tab on the Next.js campaign detail page (`/campaigns/[id]`) featuring:
+Time horizon selectors (Last 7d, 14d, 30d, 90d).
+Publisher Performance Cards displaying CTR, CPA, CPH, and CPQA with colored trend velocity arrows (green indicating cost reductions or volume increases).
+A comparative Recharts bar chart contrasting CPA and spend across campaign publishers.
+A full publisher efficiency ranking table and channel funnel progression breakdown.
+Fourth, enhance the main `/analytics` page channels tab with publisher benchmark cards and CPQA columns.
+
+### Alternative
+Compute trend comparisons on the frontend by fetching two separate full-range queries, or rank publishers solely on raw application counts.
+
+### Why
+Server-side trend computation ensures that data aggregation, date alignment, and division-by-zero safeguards execute deterministically across all client platforms.
+Ranking by CPA rather than raw applications prevents low-quality, high-volume channels from masking escalating acquisition costs.
+Color-coded trend arrows with contextual inversion (where decreasing cost is marked as positive) enable recruiters to identify anomalies at a glance.
+Redis caching shields the database from repeated analytical aggregations across high-frequency dashboard reloads.
+
+### Result
+Verified with 4 dedicated unit and integration tests in `apps/api/tests/campaign-analytics.test.ts` testing empty-data resilience, exact 7d vs prior 7d trend deltas, strict CPA-ascending publisher ranking, and campaign-specific filter isolation.
+Verified with updated React Testing Library test suites in `apps/web/tests/campaign-detail.test.tsx` and `apps/web/tests/analytics.test.tsx`.
+Monorepo verification gate passed with 0 lint errors, 0 type errors, 216/216 passing tests across 33 test suites, and clean Next.js production builds.

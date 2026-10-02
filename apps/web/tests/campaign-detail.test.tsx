@@ -136,4 +136,74 @@ describe('Campaign Detail Page (Task 17)', () => {
       });
     });
   });
+
+  it('switches to Performance tab and displays publisher performance cards with trend deltas', async () => {
+    const mockPerf = [
+      {
+        publisherId: 'pub-1',
+        publisherName: 'JobBoard Prime',
+        publisherType: 'JOB_BOARD',
+        impressions: 25000,
+        clicks: 850,
+        applications: 75,
+        qualifiedApplications: 50,
+        interviews: 20,
+        hires: 5,
+        spend: 12000,
+        ctr: 0.034,
+        applicationRate: 0.088,
+        cpc: 14.12,
+        cpa: 160.0,
+        cpqa: 240.0,
+        cph: 2400.0,
+        rank: 1,
+        trends: {
+          ctrDelta: 5.2,
+          cpcDelta: -4.1,
+          cpaDelta: -10.5,
+          cpqaDelta: -8.0,
+          cphDelta: -12.0,
+          impressionsDelta: 15.0,
+          clicksDelta: 12.0,
+          applicationsDelta: 20.0,
+          spendDelta: 8.0,
+        },
+        funnel: {
+          impressions: 25000,
+          clicks: 850,
+          applications: 75,
+          qualifiedApplications: 50,
+          interviews: 20,
+          hires: 5,
+        },
+      },
+    ];
+
+    jest.spyOn(api, 'get').mockImplementation((url: string) => {
+      if (url === '/api/campaigns/camp-1') {
+        return Promise.resolve({ data: mockCampaign });
+      }
+      if (url === '/api/publishers') {
+        return Promise.resolve({ data: mockPublishers });
+      }
+      if (url.includes('/api/analytics/publishers')) {
+        return Promise.resolve({ data: mockPerf });
+      }
+      return Promise.resolve({ data: null });
+    });
+
+    render(<CampaignDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-performance')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('tab-performance'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Publisher Performance Cards/i)).toBeInTheDocument();
+      expect(screen.getByText(/Publisher Efficiency & Ranking Table/i)).toBeInTheDocument();
+      expect(screen.getByText(/Top Performer/i)).toBeInTheDocument();
+    });
+  });
 });

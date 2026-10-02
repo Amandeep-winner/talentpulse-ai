@@ -12,6 +12,9 @@ import {
 import {
   RefreshCw,
   ArrowLeft,
+  ArrowUpRight,
+  ArrowDownRight,
+  Award,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -102,6 +105,25 @@ export default function AnalyticsPage() {
   const formatPercent = (val: number | null | undefined) => {
     if (val === null || val === undefined) return '-';
     return `${val.toFixed(1)}%`;
+  };
+
+  const TrendDelta = ({ delta, invert = false }: { delta: number | null | undefined; invert?: boolean }) => {
+    if (delta === null || delta === undefined) {
+      return <span className="text-neutral-500 text-xs font-mono">-</span>;
+    }
+    const isZero = Math.abs(delta) < 0.05;
+    const isPositive = delta > 0;
+    const isGood = invert ? delta < 0 : delta > 0;
+    const color = isZero ? 'text-neutral-400' : isGood ? 'text-emerald-400' : 'text-rose-400';
+    const Icon = isZero ? null : isPositive ? ArrowUpRight : ArrowDownRight;
+
+    return (
+      <span className={`inline-flex items-center text-xs font-mono font-medium ${color}`}>
+        {Icon && <Icon className="h-3 w-3 mr-0.5 inline-block" />}
+        {isPositive ? '+' : ''}
+        {delta.toFixed(1)}%
+      </span>
+    );
   };
 
   return (
@@ -359,6 +381,70 @@ export default function AnalyticsPage() {
       {/* Tab 2: Channel Comparisons */}
       {activeTab === 'channels' && (
         <div className="space-y-6">
+          {/* Publisher Performance Cards with Trend Arrows */}
+          <div className="space-y-2">
+            <div className="text-sm font-semibold text-white flex items-center gap-2">
+              <Award className="h-4 w-4 text-amber-400" />
+              Publisher Performance Benchmarks (vs Prior 7d)
+            </div>
+            <p className="text-xs text-neutral-400">
+              Channel efficiency cards showing CTR, CPA, CPH, and CPQA with 7-day velocity indicators
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {publishers.map((pub) => (
+              <Card key={pub.publisherId} className="bg-neutral-900 border-neutral-800 p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">{pub.publisherName}</span>
+                    <Badge variant="outline" className="text-[10px] border-neutral-700">
+                      {pub.publisherType}
+                    </Badge>
+                  </div>
+                  <Badge variant={pub.rank === 1 ? 'default' : 'outline'} className="text-[10px]">
+                    #{pub.rank || 1} {pub.rank === 1 ? 'Top Performer' : ''}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-neutral-400 block text-[10px] uppercase">CTR</span>
+                    <div className="text-sm font-bold text-white">{formatPercent(pub.ctr)}</div>
+                    <TrendDelta delta={pub.trends?.ctrDelta} />
+                  </div>
+
+                  <div>
+                    <span className="text-neutral-400 block text-[10px] uppercase">CPA</span>
+                    <div className="text-sm font-bold text-emerald-400">{formatCurrency(pub.cpa)}</div>
+                    <TrendDelta delta={pub.trends?.cpaDelta} invert />
+                  </div>
+
+                  <div>
+                    <span className="text-neutral-400 block text-[10px] uppercase">CPQA</span>
+                    <div className="text-sm font-bold text-blue-400">{formatCurrency(pub.cpqa)}</div>
+                    <TrendDelta delta={pub.trends?.cpqaDelta} invert />
+                  </div>
+
+                  <div>
+                    <span className="text-neutral-400 block text-[10px] uppercase">CPH</span>
+                    <div className="text-sm font-bold text-amber-400">{formatCurrency(pub.cph)}</div>
+                    <TrendDelta delta={pub.trends?.cphDelta} invert />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between text-[11px] text-neutral-400">
+                  <span>
+                    Spend: <strong className="text-white font-mono">{formatCurrency(pub.spend)}</strong>
+                  </span>
+                  <span>
+                    Apps: <strong className="text-white font-mono">{pub.applications}</strong>
+                  </span>
+                </div>
+              </Card>
+            ))}
+          </div>
+
           <Card className="bg-neutral-900 border-neutral-800">
             <CardHeader>
               <CardTitle className="text-base text-white">Publisher Channel Volume vs CPA</CardTitle>
@@ -404,10 +490,13 @@ export default function AnalyticsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-neutral-800 bg-neutral-950/60">
+                      <TableHead className="text-xs text-neutral-400">Rank</TableHead>
                       <TableHead className="text-xs text-neutral-400">Publisher</TableHead>
                       <TableHead className="text-xs text-neutral-400">Type</TableHead>
                       <TableHead className="text-xs text-neutral-400 text-right">Apps</TableHead>
                       <TableHead className="text-xs text-neutral-400 text-right">Qualified</TableHead>
+                      <TableHead className="text-xs text-neutral-400 text-right">CPA</TableHead>
+                      <TableHead className="text-xs text-neutral-400 text-right">CPQA</TableHead>
                       <TableHead className="text-xs text-neutral-400 text-right">Quality %</TableHead>
                       <TableHead className="text-xs text-neutral-400 text-right">Interviews</TableHead>
                       <TableHead className="text-xs text-neutral-400 text-right">Hires</TableHead>
@@ -420,6 +509,9 @@ export default function AnalyticsPage() {
                       const hireRate = p.applications > 0 ? (p.hires / p.applications) * 100 : null;
                       return (
                         <TableRow key={p.publisherId} className="border-neutral-800 hover:bg-neutral-800/40">
+                          <TableCell className="font-mono text-xs text-amber-400 font-bold">
+                            #{p.rank || 1}
+                          </TableCell>
                           <TableCell className="font-medium text-white text-xs">{p.publisherName}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-[10px] border-neutral-700">
@@ -431,6 +523,14 @@ export default function AnalyticsPage() {
                           </TableCell>
                           <TableCell className="text-right text-xs text-neutral-200">
                             {p.qualifiedApplications.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right text-xs">
+                            <div className="font-mono text-emerald-400 font-bold">{formatCurrency(p.cpa)}</div>
+                            <TrendDelta delta={p.trends?.cpaDelta} invert />
+                          </TableCell>
+                          <TableCell className="text-right text-xs">
+                            <div className="font-mono text-blue-400 font-medium">{formatCurrency(p.cpqa)}</div>
+                            <TrendDelta delta={p.trends?.cpqaDelta} invert />
                           </TableCell>
                           <TableCell className="text-right text-xs font-semibold text-emerald-400">
                             {formatPercent(qualityPct)}

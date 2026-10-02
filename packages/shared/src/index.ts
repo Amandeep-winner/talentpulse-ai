@@ -785,6 +785,27 @@ export interface TimeSeriesPoint {
   spend: number;
 }
 
+export interface PublisherPerformanceTrends {
+  ctrDelta: number | null;
+  cpcDelta: number | null;
+  cpaDelta: number | null;
+  cpqaDelta: number | null;
+  cphDelta: number | null;
+  impressionsDelta: number | null;
+  clicksDelta: number | null;
+  applicationsDelta: number | null;
+  spendDelta: number | null;
+}
+
+export interface PublisherFunnelMetrics {
+  impressions: number;
+  clicks: number;
+  applications: number;
+  qualifiedApplications: number;
+  interviews: number;
+  hires: number;
+}
+
 export interface PublisherPerformance {
   publisherId: string;
   publisherName: string;
@@ -800,7 +821,11 @@ export interface PublisherPerformance {
   applicationRate: number | null;
   cpc: number | null;
   cpa: number | null;
+  cpqa: number | null;
   cph: number | null;
+  rank?: number;
+  trends?: PublisherPerformanceTrends;
+  funnel?: PublisherFunnelMetrics;
 }
 
 export interface CampaignPerformance {

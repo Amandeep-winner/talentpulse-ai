@@ -120,14 +120,14 @@ describe('AnalyticsPage', () => {
     fireEvent.click(screen.getByText('Channel Comparisons'));
     await waitFor(() => {
       expect(screen.getByText('Publisher Channel Volume vs CPA')).toBeInTheDocument();
-      expect(screen.getByText('JobBoard Prime')).toBeInTheDocument();
+      expect(screen.getAllByText('JobBoard Prime').length).toBeGreaterThanOrEqual(1);
     });
 
     // Switch to Unit Economics tab
     fireEvent.click(screen.getByText('Unit Economics'));
     await waitFor(() => {
       expect(screen.getByText('Channel Unit Economics and Acquisition Cost Matrix')).toBeInTheDocument();
-      expect(screen.getByText('JobBoard Prime')).toBeInTheDocument();
+      expect(screen.getAllByText('JobBoard Prime').length).toBeGreaterThanOrEqual(1);
     });
   });
 });
