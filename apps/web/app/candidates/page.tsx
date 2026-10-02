@@ -2,8 +2,14 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { CandidateItem, PaginationMeta, CreateCandidateRequest } from '@talentpulse/shared';
-import { Users, Plus, Search, MapPin, CheckCircle2 } from 'lucide-react';
+import {
+  CandidateItem,
+  PaginationMeta,
+  CreateCandidateRequest,
+  CandidateSearchResultItem,
+  CandidateSearchResponse,
+} from '@talentpulse/shared';
+import { Users, Plus, Search, MapPin, CheckCircle2, Sparkles, X, Brain } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -29,6 +35,13 @@ export default function CandidatesPage() {
   const [locationFilter, setLocationFilter] = React.useState('');
   const [remoteOnly, setRemoteOnly] = React.useState(false);
   const [page, setPage] = React.useState(1);
+
+  // Semantic Vector Search
+  const [semanticQuery, setSemanticQuery] = React.useState('');
+  const [semanticMinExp, setSemanticMinExp] = React.useState('');
+  const [isSemanticActive, setIsSemanticActive] = React.useState(false);
+  const [semanticResults, setSemanticResults] = React.useState<CandidateSearchResultItem[]>([]);
+  const [isSearchingSemantic, setIsSearchingSemantic] = React.useState(false);
 
   // Add Candidate Dialog
   const [isAddOpen, setIsAddOpen] = React.useState(false);
@@ -73,8 +86,54 @@ export default function CandidatesPage() {
   }, [page, search, locationFilter, remoteOnly, addToast]);
 
   React.useEffect(() => {
-    fetchCandidates();
-  }, [fetchCandidates]);
+    if (!isSemanticActive) {
+      fetchCandidates();
+    }
+  }, [fetchCandidates, isSemanticActive]);
+
+  const handleSemanticSearch = async (queryOverride?: string) => {
+    const q = (queryOverride !== undefined ? queryOverride : semanticQuery).trim();
+    if (!q) {
+      addToast({
+        title: 'Query Required',
+        description: 'Please enter a search prompt for semantic vector matching',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    if (queryOverride !== undefined) {
+      setSemanticQuery(queryOverride);
+    }
+
+    setIsSearchingSemantic(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('q', q);
+      if (remoteOnly) params.set('remoteOk', 'true');
+      if (semanticMinExp) params.set('minExperience', semanticMinExp);
+
+      const res = await api.get<{ data: CandidateSearchResponse }>(
+        `/api/candidates/search?${params.toString()}`,
+      );
+      setSemanticResults(res.data.candidates || []);
+      setIsSemanticActive(true);
+    } catch {
+      addToast({
+        title: 'Search Error',
+        description: 'Failed to perform semantic vector search',
+        variant: 'danger',
+      });
+    } finally {
+      setIsSearchingSemantic(false);
+    }
+  };
+
+  const handleClearSemantic = () => {
+    setIsSemanticActive(false);
+    setSemanticQuery('');
+    setSemanticResults([]);
+  };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,6 +212,99 @@ export default function CandidatesPage() {
         )}
       </div>
 
+      {/* Semantic Vector Search Card */}
+      <Card className="bg-[#0D1527] border-blue-900/50 shadow-md">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-semibold text-blue-400">
+              <Brain className="h-4 w-4 text-blue-400" />
+              <span>Semantic Candidate Search (pgvector)</span>
+            </div>
+            {isSemanticActive && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearSemantic}
+                className="h-7 text-xs border-gray-700 hover:bg-gray-800 text-gray-300"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Clear Vector Search
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-blue-400" />
+              <input
+                type="text"
+                placeholder="Enter job requirements or natural language profile (e.g. 'Kubernetes DevOps engineer with Docker')..."
+                value={semanticQuery}
+                onChange={(e) => setSemanticQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSemanticSearch();
+                  }
+                }}
+                className="w-full rounded-md border border-blue-800/60 bg-gray-950/80 pl-9 pr-3 py-2 text-xs text-gray-100 placeholder-gray-500 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                placeholder="Min Yrs"
+                value={semanticMinExp}
+                onChange={(e) => setSemanticMinExp(e.target.value)}
+                min="0"
+                className="w-20 rounded-md border border-blue-800/60 bg-gray-950/80 px-2.5 py-2 text-xs text-gray-200 placeholder-gray-500 focus:border-blue-400 focus:outline-none"
+              />
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleSemanticSearch()}
+                disabled={isSearchingSemantic}
+                className="h-9 px-4 text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5 text-blue-200" />
+                {isSearchingSemantic ? 'Embedding...' : 'Vector Search'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Prompt Chips */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-[11px] text-gray-400 mr-1">Suggestions:</span>
+            {[
+              'Kubernetes DevOps Engineer',
+              'React & Next.js Frontend Architect',
+              'Clinical Intensive Care Specialist',
+              'Distributed Systems Python Data Lead',
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => handleSemanticSearch(suggestion)}
+                className="text-[11px] px-2 py-0.5 rounded-full bg-blue-950/60 border border-blue-800/50 text-blue-300 hover:bg-blue-900/50 hover:text-white transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+
+          {isSemanticActive && (
+            <div className="flex items-center justify-between text-xs text-blue-300/90 bg-blue-950/40 border border-blue-800/40 rounded px-3 py-1.5 mt-2">
+              <span>
+                Found <strong>{semanticResults.length}</strong> semantic matches for &ldquo;{semanticQuery}&rdquo; ranked by cosine similarity
+              </span>
+              <span className="text-[11px] text-gray-400">pgvector &lt;=&gt; cosine distance</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="bg-[#0E131F] border-gray-800">
         <CardHeader className="pb-3 border-b border-gray-800/80">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -164,7 +316,8 @@ export default function CandidatesPage() {
                   placeholder="Search candidates by name, email, or skill..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-md border border-gray-700 bg-gray-900/80 pl-9 pr-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+                  disabled={isSemanticActive}
+                  className="w-full rounded-md border border-gray-700 bg-gray-900/80 pl-9 pr-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none disabled:opacity-50"
                 />
               </div>
             </div>
@@ -175,15 +328,20 @@ export default function CandidatesPage() {
                 placeholder="Filter by city..."
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="w-36 rounded-md border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none"
-              >
-              </input>
+                disabled={isSemanticActive}
+                className="w-36 rounded-md border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+              />
 
               <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-300">
                 <input
                   type="checkbox"
                   checked={remoteOnly}
-                  onChange={(e) => setRemoteOnly(e.target.checked)}
+                  onChange={(e) => {
+                    setRemoteOnly(e.target.checked);
+                    if (isSemanticActive) {
+                      handleSemanticSearch();
+                    }
+                  }}
                   className="rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500"
                 />
                 <span>Remote OK</span>
@@ -193,19 +351,27 @@ export default function CandidatesPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-          {isLoading ? (
+          {isLoading || isSearchingSemantic ? (
             <div className="p-6 space-y-3">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
-          ) : candidates.length === 0 ? (
+          ) : (isSemanticActive ? semanticResults.length === 0 : candidates.length === 0) ? (
             <EmptyState
               icon={Users}
-              title="No candidates found"
-              description="Add your first candidate or adjust search filters."
+              title={isSemanticActive ? 'No matching candidates' : 'No candidates found'}
+              description={
+                isSemanticActive
+                  ? 'Try broadening your semantic search query or removing filters.'
+                  : 'Add your first candidate or adjust search filters.'
+              }
               action={
-                canManage ? (
+                isSemanticActive ? (
+                  <Button variant="outline" size="sm" onClick={handleClearSemantic}>
+                    Clear Vector Search
+                  </Button>
+                ) : canManage ? (
                   <Button variant="outline" size="sm" onClick={() => setIsAddOpen(true)}>
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Add Candidate Profile
@@ -218,88 +384,162 @@ export default function CandidatesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Candidate</TableHead>
+                  {isSemanticActive && <TableHead>Vector Similarity</TableHead>}
                   <TableHead>Location</TableHead>
                   <TableHead>Experience</TableHead>
                   <TableHead>Skills</TableHead>
-                  <TableHead>Resume</TableHead>
+                  {!isSemanticActive && <TableHead>Resume</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {candidates.map((cand) => (
-                  <TableRow key={cand.id}>
-                    <TableCell>
-                      <div>
-                        <Link
-                          href={`/candidates/${cand.id}`}
-                          className="font-medium text-xs text-blue-400 hover:underline block leading-tight"
-                        >
-                          {cand.name}
-                        </Link>
-                        <span className="text-[11px] text-gray-400 block mt-0.5">{cand.email}</span>
-                      </div>
-                    </TableCell>
+                {isSemanticActive
+                  ? semanticResults.map((cand) => (
+                      <TableRow key={cand.id}>
+                        <TableCell>
+                          <div>
+                            <Link
+                              href={`/candidates/${cand.id}`}
+                              className="font-medium text-xs text-blue-400 hover:underline block leading-tight"
+                            >
+                              {cand.name}
+                            </Link>
+                            <span className="text-[11px] text-gray-400 block mt-0.5">{cand.email}</span>
+                          </div>
+                        </TableCell>
 
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-300">
-                        <MapPin className="h-3.5 w-3.5 text-gray-500" />
-                        <span>{cand.location}</span>
-                        {cand.remoteOk && (
-                          <Badge variant="outline" className="text-[10px] py-0 px-1 text-emerald-400 border-emerald-800/60">
-                            Remote
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-0.5">
+                            <Badge
+                              variant={cand.similarity >= 0.7 ? 'success' : cand.similarity >= 0.4 ? 'info' : 'default'}
+                              className="font-mono text-[11px] w-fit px-2 py-0.5"
+                            >
+                              {Math.round(cand.similarity * 100)}% Match
+                            </Badge>
+                            <span className="text-[10px] text-gray-500 font-mono">
+                              sim: {cand.similarity.toFixed(3)}
+                            </span>
+                          </div>
+                        </TableCell>
 
-                    <TableCell className="text-xs text-gray-300 font-mono">
-                      {cand.experienceYears} yrs
-                    </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs text-gray-300">
+                            <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                            <span>{cand.location}</span>
+                            {cand.remoteOk && (
+                              <Badge variant="outline" className="text-[10px] py-0 px-1 text-emerald-400 border-emerald-800/60">
+                                Remote
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
 
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {cand.skills.slice(0, 3).map((skill) => (
-                          <span
-                            key={skill}
-                            className="inline-block px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-[10px] text-gray-300 font-mono"
+                        <TableCell className="text-xs text-gray-300 font-mono">
+                          {cand.experienceYears} yrs
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {cand.skills.slice(0, 3).map((skill) => (
+                              <span
+                                key={skill}
+                                className="inline-block px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-[10px] text-gray-300 font-mono"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {cand.skills.length > 3 && (
+                              <span className="text-[10px] text-gray-500 self-center">
+                                +{cand.skills.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Link
+                            href={`/candidates/${cand.id}`}
+                            className="text-xs font-medium text-blue-400 hover:text-blue-300"
                           >
-                            {skill}
-                          </span>
-                        ))}
-                        {cand.skills.length > 3 && (
-                          <span className="text-[10px] text-gray-500 self-center">
-                            +{cand.skills.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
+                            View Profile →
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  : candidates.map((cand) => (
+                      <TableRow key={cand.id}>
+                        <TableCell>
+                          <div>
+                            <Link
+                              href={`/candidates/${cand.id}`}
+                              className="font-medium text-xs text-blue-400 hover:underline block leading-tight"
+                            >
+                              {cand.name}
+                            </Link>
+                            <span className="text-[11px] text-gray-400 block mt-0.5">{cand.email}</span>
+                          </div>
+                        </TableCell>
 
-                    <TableCell>
-                      {cand.resumeText ? (
-                        <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>Uploaded</span>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-gray-500">Pending</span>
-                      )}
-                    </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs text-gray-300">
+                            <MapPin className="h-3.5 w-3.5 text-gray-500" />
+                            <span>{cand.location}</span>
+                            {cand.remoteOk && (
+                              <Badge variant="outline" className="text-[10px] py-0 px-1 text-emerald-400 border-emerald-800/60">
+                                Remote
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
 
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/candidates/${cand.id}`}
-                        className="text-xs font-medium text-blue-400 hover:text-blue-300"
-                      >
-                        View Profile →
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        <TableCell className="text-xs text-gray-300 font-mono">
+                          {cand.experienceYears} yrs
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {cand.skills.slice(0, 3).map((skill) => (
+                              <span
+                                key={skill}
+                                className="inline-block px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-[10px] text-gray-300 font-mono"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {cand.skills.length > 3 && (
+                              <span className="text-[10px] text-gray-500 self-center">
+                                +{cand.skills.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          {cand.resumeText ? (
+                            <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>Uploaded</span>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-gray-500">Pending</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Link
+                            href={`/candidates/${cand.id}`}
+                            className="text-xs font-medium text-blue-400 hover:text-blue-300"
+                          >
+                            View Profile →
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
               </TableBody>
             </Table>
           )}
 
-          {meta && meta.totalPages > 1 && (
+          {!isSemanticActive && meta && meta.totalPages > 1 && (
             <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800 text-xs text-gray-400">
               <span>
                 Page {meta.page} of {meta.totalPages} ({meta.total} candidates)

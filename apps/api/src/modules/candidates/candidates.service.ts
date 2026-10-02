@@ -5,10 +5,15 @@ import {
   CandidateItem,
   CandidateFilterQuery,
   PaginationMeta,
+  CandidateSearchQuery,
+  CandidateSearchResponse,
 } from '@talentpulse/shared';
 import { prisma } from '../../lib/prisma';
 import { normalizeSkills } from '../../utils/skills';
 import { enqueue } from '../../lib/queue';
+import { cached, CacheResult, invalidate } from '../../lib/cache';
+import { embedText } from '../../lib/embeddings';
+import { knnCandidates } from '../../lib/vector';
 import { NotFoundError, ValidationError } from '../../lib/errors/AppError';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -133,6 +138,7 @@ export class CandidatesService {
     });
 
     enqueue('embedding', { type: 'candidate', id: candidate.id, orgId: organizationId }).catch(() => {});
+    await invalidate(organizationId, 'candidates-search');
 
     return mapCandidateToItem(candidate);
   }
@@ -174,6 +180,7 @@ export class CandidatesService {
     });
 
     enqueue('embedding', { type: 'candidate', id: updated.id, orgId: organizationId }).catch(() => {});
+    await invalidate(organizationId, 'candidates-search');
 
     return mapCandidateToItem(updated);
   }
@@ -190,6 +197,8 @@ export class CandidatesService {
     await prisma.candidate.delete({
       where: { id },
     });
+
+    await invalidate(organizationId, 'candidates-search');
 
     return { message: 'Candidate deleted successfully' };
   }
@@ -243,11 +252,56 @@ export class CandidatesService {
 
     enqueue('embedding', { type: 'candidate', id: candidateId, orgId: organizationId }).catch(() => {});
 
+    await invalidate(organizationId, 'candidates');
+    await invalidate(organizationId, 'candidates-search');
+
     return {
       id: candidateId,
       resumeText: extractedText,
       message: 'Resume text saved successfully',
     };
+  }
+
+  /**
+   * Semantic candidate search via query embedding and pgvector cosine similarity (<=>).
+   * Cached for 60 seconds per organization and query parameters.
+   */
+  async searchSemantic(
+    organizationId: string,
+    query: CandidateSearchQuery,
+  ): Promise<CacheResult<CandidateSearchResponse>> {
+    const q = query.q.trim();
+    if (!q) {
+      throw new ValidationError('Search query cannot be empty');
+    }
+
+    return cached(organizationId, 'candidates-search', query, 60, async () => {
+      const queryVector = await embedText(q);
+      const results = await knnCandidates({
+        orgId: organizationId,
+        queryVector,
+        limit: query.limit ?? 20,
+        minExperience: query.minExperience,
+        remoteOk: query.remoteOk,
+      });
+
+      return {
+        query: q,
+        total: results.length,
+        candidates: results.map((r) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          location: r.location,
+          experienceYears: Number(r.experienceYears),
+          skills: r.skills || [],
+          education: r.education || null,
+          remoteOk: r.remoteOk,
+          distance: Number(r.distance),
+          similarity: Number(r.similarity),
+        })),
+      };
+    });
   }
 }
 

@@ -126,6 +126,7 @@ export interface CandidateKnnResult {
   location: string;
   experienceYears: number;
   skills: string[];
+  education?: string | null;
   remoteOk: boolean;
   distance: number;
   similarity: number;
@@ -152,9 +153,10 @@ export async function knnCandidates(options: {
       location,
       "experienceYears",
       skills,
+      education,
       "remoteOk",
       (embedding <=> $1::vector) AS distance,
-      (1 - (embedding <=> $1::vector)) AS similarity
+      ROUND((1 - (embedding <=> $1::vector))::numeric, 4)::float AS similarity
     FROM "Candidate"
     WHERE "organizationId" = $2::uuid
       AND embedding IS NOT NULL

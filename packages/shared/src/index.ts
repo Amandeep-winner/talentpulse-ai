@@ -271,6 +271,40 @@ export const resumePasteRequestSchema = z.object({
 
 export type ResumePasteRequest = z.infer<typeof resumePasteRequestSchema>;
 
+export const candidateSearchQuerySchema = z.object({
+  q: z.string().trim().min(1, 'Search query cannot be empty'),
+  limit: z.coerce.number().int().positive().max(50).default(20),
+  remoteOk: z
+    .union([z.boolean(), z.enum(['true', 'false']).transform((v) => v === 'true')])
+    .optional(),
+  minExperience: z.coerce.number().nonnegative().optional(),
+});
+
+export type CandidateSearchQuery = z.infer<typeof candidateSearchQuerySchema>;
+
+export const candidateSearchResultItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  email: z.string(),
+  location: z.string(),
+  experienceYears: z.number(),
+  skills: z.array(z.string()),
+  education: z.string().nullable().optional(),
+  remoteOk: z.boolean(),
+  distance: z.number(),
+  similarity: z.number(),
+});
+
+export type CandidateSearchResultItem = z.infer<typeof candidateSearchResultItemSchema>;
+
+export const candidateSearchResponseSchema = z.object({
+  query: z.string(),
+  total: z.number(),
+  candidates: z.array(candidateSearchResultItemSchema),
+});
+
+export type CandidateSearchResponse = z.infer<typeof candidateSearchResponseSchema>;
+
 /**
  * Applications Enums and Schemas
  */

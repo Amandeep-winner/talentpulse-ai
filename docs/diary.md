@@ -201,7 +201,42 @@ Re-normalizing candidate mean vectors to unit length is mathematically essential
 Integrating background BullMQ queues decouples user-facing API response times from vector generation while retaining synchronous pipeline access for deterministic test fixtures and seed runs.
 
 ### Result
-Verified with 24 unit and integration tests across chunking, vector normalization, cosine similarity sanity checks, BullMQ queues, and API routes.
-Confirmed that `prisma/seed.ts` populates 100% of seeded jobs (30/30) and candidates (400/400) with non-null embeddings and generates exactly 800 candidate chunk vectors.
 Full monorepo verification passed with 0 lint errors, 0 type errors, 111/111 passing tests across all workspaces, and zero production build warnings.
+
+---
+
+## Task 12 - Semantic Candidate Vector Search via Pgvector with Parametric Filtering and Dynamic Similarity Chips
+
+### Problem
+Traditional recruitment searches rely on keyword matching, which fails to surface candidates who use synonyms, adjacent technologies, or contextual descriptions rather than exact keywords.
+Recruiters searching for "Kubernetes DevOps Engineer" frequently miss qualified candidates whose resumes highlight "container orchestration, Docker swarm, microservices deployment, and cloud infrastructure".
+At the same time, pure vector similarity search without operational filtering ignores hard constraints such as candidate remote availability or minimum required years of experience.
+Furthermore, vector similarity queries over thousands of candidates require low-latency indexing, multi-tenant query isolation, and intelligent caching to avoid redundant embedding generations.
+
+### Decision
+Implement `GET /api/candidates/search?q=` powered by pgvector cosine distance (`<=>`) queries with pre-order parametric SQL filters.
+Enforce non-empty query validation via `candidateSearchQuerySchema` in `@talentpulse/shared`, rejecting blank or whitespace-only inputs with HTTP 400 Bad Request.
+Embed incoming search prompts dynamically into 384-dimensional unit vectors using the embedding pipeline.
+Execute an organization-scoped SQL query using `(embedding <=> $1::vector)` for cosine distance and compute cosine similarity as `ROUND((1 - (embedding <=> $1::vector))::numeric, 4)::float`.
+Incorporate parametric filters (`minExperience`, `remoteOk`) directly into the SQL `WHERE` clause prior to distance sorting and `LIMIT 20` capping.
+Cache search results in Redis for 60 seconds using tenant-scoped versioned keys (`tp:{orgId}:candidates-search:{hash(params)}`) and return `X-Cache: HIT|MISS` headers.
+Invalidate candidate search caches automatically upon candidate creations, updates, deletions, and resume uploads.
+Build an interactive Semantic Vector Search card and table view on the Next.js `/candidates` frontend with prompt suggestions ("Kubernetes DevOps Engineer", "React & Next.js Frontend Architect", "Clinical Intensive Care Specialist", "Distributed Systems Python Data Lead").
+Display dynamic similarity match badges with color coding (emerald for >= 70% match, blue for >= 40% match) and exact cosine similarity metrics alongside location, experience, and skill tags.
+Provide a clear vector search action that immediately resets the view back to the standard paginated candidate directory.
+
+### Alternative
+Perform keyword-based full text search using PostgreSQL `tsvector`, or compute cosine distances in Node.js application memory after loading all candidates.
+
+### Why
+In-memory vector similarity computation transfers large vector payloads across the network and scales poorly as candidate pools expand into tens of thousands of records.
+Executing distance calculations in PostgreSQL with pgvector utilizes hardware-accelerated vector instructions and existing HNSW cosine indexes while enforcing tenant isolation at the database layer.
+Combining SQL `WHERE` filters with vector distance sorting ensures that only eligible candidates are evaluated and ranked.
+Redis caching absorbs repeated recruiter searches and common candidate role queries with sub-millisecond response times.
+
+### Result
+Verified with 6 integration tests covering input validation, semantic relevance ranking, parametric filtering (`remoteOk`, `minExperience`), multi-tenant isolation, ANALYST read-only access, and 60-second Redis caching.
+Verified with 2 React Testing Library tests confirming semantic search input, prompt suggestion clicks, API invocation, similarity chip rendering, and view reset interactions.
+Monorepo verification gate passed with 0 lint errors, 0 type errors, 119/119 passing tests across all workspaces, and zero production build warnings.
+
 

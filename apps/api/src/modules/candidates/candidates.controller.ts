@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
-import { candidateFilterQuerySchema } from '@talentpulse/shared';
+import { candidateFilterQuerySchema, candidateSearchQuerySchema } from '@talentpulse/shared';
 import { candidatesService } from './candidates.service';
 import { ValidationError } from '../../lib/errors/AppError';
 
@@ -97,6 +97,20 @@ export class CandidatesController {
         },
       );
       res.status(200).json({ data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async search(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const parsedQuery = candidateSearchQuerySchema.parse(req.query);
+      const result = await candidatesService.searchSemantic(
+        req.user!.organizationId,
+        parsedQuery,
+      );
+      res.setHeader('X-Cache', result.cached ? 'HIT' : 'MISS');
+      res.status(200).json({ data: result.data });
     } catch (error) {
       next(error);
     }

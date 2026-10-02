@@ -4,6 +4,7 @@ import {
   createCandidateRequestSchema,
   updateCandidateRequestSchema,
   candidateFilterQuerySchema,
+  candidateSearchQuerySchema,
 } from '@talentpulse/shared';
 import { candidatesController, upload } from './candidates.controller';
 import { embeddingController } from '../embeddings/embedding.controller';
@@ -17,6 +18,11 @@ const idParamSchema = z.object({
 const router = Router();
 
 router.use(authenticate);
+
+// Semantic Vector Search: ADMIN, RECRUITER, ANALYST (must precede /:id)
+router.get('/search', validate({ query: candidateSearchQuerySchema }), (req, res, next) => {
+  candidatesController.search(req, res, next);
+});
 
 // Reads: ADMIN, RECRUITER, ANALYST
 router.get('/', validate({ query: candidateFilterQuerySchema }), (req, res, next) => {

@@ -80,7 +80,13 @@ This document tracks implementation progress across all 34 tasks.
   - Added authenticated endpoints `POST /api/jobs/:id/embed` and `POST /api/candidates/:id/embed`, alongside admin-restricted `POST /api/admin/reindex`.
   - Updated `prisma/seed.ts` to synchronously generate embeddings for all 30 jobs and 400 candidates (yielding 800 candidate chunks).
   - Verified with 24 unit and integration tests covering chunking edge cases, vector normalization, worker pipelines, and tenant isolation.
-- [ ] Task 12: Vector search
+- [x] Task 12: Vector search
+  - Implemented semantic candidate vector search endpoint `GET /api/candidates/search?q=` powered by pgvector cosine distance (`<=>`).
+  - Added parametric SQL pre-filtering for `remoteOk` and `minExperience`.
+  - Implemented 60-second Redis caching with tenant-scoped keys and automatic invalidation on candidate mutations.
+  - Added `candidateSearchQuerySchema` and `candidateSearchResultItemSchema` in `@talentpulse/shared`.
+  - Built interactive Semantic Vector Search card and table integration on Next.js `/candidates` frontend with prompt suggestions, match percentages, and similarity chips.
+  - Verified with 6 API integration tests and 2 React Testing Library frontend tests.
 - [ ] Task 13: Hybrid candidate ranking (explainable)
 - [ ] Task 14: RAG knowledge system
 - [ ] Task 15: Ask TalentPulse (conversational analyst, v1 pipeline)
