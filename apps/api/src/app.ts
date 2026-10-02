@@ -21,6 +21,7 @@ import publishersRoutes from './modules/publishers/publishers.routes';
 import campaignsRoutes from './modules/campaigns/campaigns.routes';
 import eventsRoutes from './modules/events/events.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
+import { adminRoutes } from './modules/admin/admin.routes';
 import { authenticateKeyOrJwt } from './middleware/auth';
 
 // Initialize Prometheus default metrics collection once
@@ -112,6 +113,7 @@ export function createApp(): Express {
   app.use('/api/campaigns', campaignsRoutes);
   app.use('/api/events', eventsRoutes);
   app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/admin', adminRoutes);
 
   if (env.NODE_ENV === 'test') {
     app.get('/api/test-key-auth', authenticateKeyOrJwt, (req, res) => {

@@ -12,6 +12,7 @@ import {
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
+import { embeddingService } from '../apps/api/src/modules/embeddings/embedding.service';
 
 const prisma = new PrismaClient();
 
@@ -353,6 +354,18 @@ Interested in roles based in ${location} or remote opportunities with competitiv
     createdCandidates.push(...result);
   }
   console.log(`Created ${createdCandidates.length} candidates.`);
+
+  // 8b. Synchronously generate embeddings for all jobs and candidates (Task 11)
+  console.log('Generating embeddings for all jobs and candidates...');
+  for (const job of jobs) {
+    await embeddingService.embedJob(job.id, org.id);
+  }
+  console.log(`Generated embeddings for ${jobs.length} jobs.`);
+
+  for (const cand of createdCandidates) {
+    await embeddingService.embedCandidate(cand.id, org.id);
+  }
+  console.log(`Generated embeddings and chunks for ${createdCandidates.length} candidates.`);
 
   // 9. Generate ~1,500 Applications with Valid State Machine Transitions
   console.log('Generating ~1,500 applications across candidates and jobs...');

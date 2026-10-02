@@ -3,6 +3,7 @@ import { CreateJobRequest, UpdateJobRequest, JobItem, JobFilterQuery, Pagination
 import { prisma } from '../../lib/prisma';
 import { cached, invalidate, CacheResult } from '../../lib/cache';
 import { normalizeSkills } from '../../utils/skills';
+import { enqueue } from '../../lib/queue';
 import { NotFoundError } from '../../lib/errors/AppError';
 
 function mapJobToItem(job: Job): JobItem {
@@ -131,6 +132,7 @@ export class JobsService {
     });
 
     await invalidate(organizationId, 'jobs');
+    enqueue('embedding', { type: 'job', id: job.id, orgId: organizationId }).catch(() => {});
 
     return mapJobToItem(job);
   }
@@ -171,6 +173,7 @@ export class JobsService {
     });
 
     await invalidate(organizationId, 'jobs');
+    enqueue('embedding', { type: 'job', id: updated.id, orgId: organizationId }).catch(() => {});
 
     return mapJobToItem(updated);
   }

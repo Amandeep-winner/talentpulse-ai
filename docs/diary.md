@@ -166,6 +166,42 @@ Pure functional metric calculation guarantees mathematical consistency across RE
 
 ### Result
 Verified with 18 pure metric unit tests and 6 API integration tests validating funnel computations, period deltas, and multi-tenant isolation.
-Frontend verified with React Testing Library tests covering KPI cards, funnel progression, publisher comparisons, and filter interactions.
 Full monorepo verification gate passes with 0 lint errors, 0 type errors, and 87/87 passing tests across all workspaces.
 Production builds cleanly prerender both `/dashboard` and `/analytics` routes.
+
+---
+
+## Task 11 - Candidate and Job Embedding Pipeline with Paragraph-Aware Chunking and Pgvector Storage
+
+### Problem
+Vector semantic search and hybrid candidate-job matching require consistent, high-dimensional vector representations for unstructured requisitions, candidate profiles, and multi-paragraph resumes.
+Resumes often exceed standard embedding model context windows or dilute specific competency signals when embedded as single large text blocks.
+Candidate embeddings must also represent the unified signal of multiple resume sections without skewing distance metrics.
+Furthermore, vector indexing operations in high-throughput recruitment environments must execute asynchronously via background job queues while providing deterministic, synchronous execution for database seeding.
+Re-indexing operations must remain completely idempotent, preventing duplicate chunks and vector drift upon profile updates.
+
+### Decision
+Build a comprehensive embedding pipeline supporting both deterministic local feature hashing (384 dimensions) and OpenAI-compatible embedding providers.
+Implement a pure, paragraph-aware text chunker in `utils/chunk.ts` with strict boundary constraints (800 max characters, 100 character overlap, 80 minimum characters) that preserves paragraph cohesion and splits gracefully down to sentence and token boundaries.
+Implement `LocalFeatureHashingEmbedder` using unigram and bigram extraction, sublinear term-frequency weighting (`1 + log(tf)`), signed 32-bit FNV-1a hashing, canonical skill boosting from taxonomy (weight multiplier 2.0 plus canonical alias injection), and Euclidean L2-normalization to produce unit vectors.
+Implement `CandidateChunk` database storage with pgvector `vector(384)` columns.
+For candidate profiles, decompose text into chunks, generate chunk vectors, store chunk rows, compute the coordinate-wise arithmetic mean vector across chunks, and re-normalize the mean vector to unit length before updating `Candidate.embedding` and `embeddedAt`.
+Implement idempotent re-embedding by purging existing candidate chunks prior to inserting updated chunk vectors.
+Wire BullMQ queue workers in `worker.ts` to process candidate and job embedding jobs asynchronously on record creation, updates, and resume uploads.
+Expose authenticated HTTP endpoints `POST /api/jobs/:id/embed` and `POST /api/candidates/:id/embed` for manual triggers, alongside an admin-restricted endpoint `POST /api/admin/reindex` for full organization re-indexing.
+Update `prisma/seed.ts` to synchronously generate embeddings for all 30 jobs and 400 candidate profiles (producing 800 candidate chunks).
+
+### Alternative
+Embed entire resumes as single truncated blocks without chunking, or compute candidate vectors by simple unnormalized vector addition.
+
+### Why
+Unsegmented resume embedding causes specific technical skills and achievement details to get lost in bulk background noise.
+Paragraph-aware chunking with overlap retains localized context while ensuring comprehensive coverage across distinct career milestones.
+Re-normalizing candidate mean vectors to unit length is mathematically essential for cosine distance (`<=>`) operations in pgvector to remain valid unit dot products.
+Integrating background BullMQ queues decouples user-facing API response times from vector generation while retaining synchronous pipeline access for deterministic test fixtures and seed runs.
+
+### Result
+Verified with 24 unit and integration tests across chunking, vector normalization, cosine similarity sanity checks, BullMQ queues, and API routes.
+Confirmed that `prisma/seed.ts` populates 100% of seeded jobs (30/30) and candidates (400/400) with non-null embeddings and generates exactly 800 candidate chunk vectors.
+Full monorepo verification passed with 0 lint errors, 0 type errors, 111/111 passing tests across all workspaces, and zero production build warnings.
+

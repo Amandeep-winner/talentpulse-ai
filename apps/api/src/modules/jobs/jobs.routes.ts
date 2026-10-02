@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createJobRequestSchema, updateJobRequestSchema, jobFilterQuerySchema } from '@talentpulse/shared';
 import { jobsController } from './jobs.controller';
+import { embeddingController } from '../embeddings/embedding.controller';
 import { authenticate, authorize } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 
@@ -47,6 +48,15 @@ router.delete(
   validate({ params: idParamSchema }),
   (req, res, next) => {
     jobsController.delete(req, res, next);
+  },
+);
+
+router.post(
+  '/:id/embed',
+  authorize('ADMIN', 'RECRUITER'),
+  validate({ params: idParamSchema }),
+  (req, res, next) => {
+    embeddingController.embedJob(req, res, next);
   },
 );
 

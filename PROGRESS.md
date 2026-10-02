@@ -71,7 +71,15 @@ This document tracks implementation progress across all 34 tasks.
   - Built interactive, dark-themed frontend dashboards in Next.js at `/dashboard` and `/analytics` using Recharts area, line, and bar charts with loading skeletons, anomaly banners, and parametric filters.
   - Verified with 18 pure metric unit tests, 6 API integration tests, and 2 React Testing Library web suites.
   - All verification gates passed (lint, typecheck, 87/87 tests, build).
-- [ ] Task 11: Candidate & job embeddings (pipeline)
+- [x] Task 11: Candidate & job embeddings (pipeline)
+  - Built pure paragraph-aware text chunker in `utils/chunk.ts` with strict boundary limits (800 max characters, 100 character overlap, 80 minimum characters).
+  - Implemented deterministic `LocalFeatureHashingEmbedder` (384 dimensions) with unigrams, bigrams, sublinear term frequency, FNV-1a hashing, canonical skill boosting, and L2 normalization.
+  - Implemented `EmbeddingService` generating candidate chunks, computing coordinate-wise mean vectors with L2 re-normalization, and updating `Candidate.embedding`.
+  - Added pgvector storage for `CandidateChunk` and `Job` embedding vectors.
+  - Built BullMQ background queue worker in `worker.ts` triggered automatically on candidate and job creation, updates, and resume uploads.
+  - Added authenticated endpoints `POST /api/jobs/:id/embed` and `POST /api/candidates/:id/embed`, alongside admin-restricted `POST /api/admin/reindex`.
+  - Updated `prisma/seed.ts` to synchronously generate embeddings for all 30 jobs and 400 candidates (yielding 800 candidate chunks).
+  - Verified with 24 unit and integration tests covering chunking edge cases, vector normalization, worker pipelines, and tenant isolation.
 - [ ] Task 12: Vector search
 - [ ] Task 13: Hybrid candidate ranking (explainable)
 - [ ] Task 14: RAG knowledge system

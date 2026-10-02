@@ -8,6 +8,7 @@ import {
 } from '@talentpulse/shared';
 import { prisma } from '../../lib/prisma';
 import { normalizeSkills } from '../../utils/skills';
+import { enqueue } from '../../lib/queue';
 import { NotFoundError, ValidationError } from '../../lib/errors/AppError';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -131,6 +132,8 @@ export class CandidatesService {
       },
     });
 
+    enqueue('embedding', { type: 'candidate', id: candidate.id, orgId: organizationId }).catch(() => {});
+
     return mapCandidateToItem(candidate);
   }
 
@@ -169,6 +172,8 @@ export class CandidatesService {
       where: { id },
       data,
     });
+
+    enqueue('embedding', { type: 'candidate', id: updated.id, orgId: organizationId }).catch(() => {});
 
     return mapCandidateToItem(updated);
   }
@@ -235,6 +240,8 @@ export class CandidatesService {
       where: { id: candidateId },
       data: { resumeText: extractedText },
     });
+
+    enqueue('embedding', { type: 'candidate', id: candidateId, orgId: organizationId }).catch(() => {});
 
     return {
       id: candidateId,

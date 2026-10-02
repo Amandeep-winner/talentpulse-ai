@@ -6,6 +6,7 @@ import {
   candidateFilterQuerySchema,
 } from '@talentpulse/shared';
 import { candidatesController, upload } from './candidates.controller';
+import { embeddingController } from '../embeddings/embedding.controller';
 import { authenticate, authorize } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 
@@ -61,6 +62,15 @@ router.post(
   upload.single('resume'),
   (req, res, next) => {
     candidatesController.uploadResume(req, res, next);
+  },
+);
+
+router.post(
+  '/:id/embed',
+  authorize('ADMIN', 'RECRUITER'),
+  validate({ params: idParamSchema }),
+  (req, res, next) => {
+    embeddingController.embedCandidate(req, res, next);
   },
 );
 

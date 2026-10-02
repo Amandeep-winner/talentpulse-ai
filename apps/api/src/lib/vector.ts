@@ -51,6 +51,72 @@ export async function updateCandidateEmbedding(candidateId: string, embedding: n
 }
 
 /**
+ * Computes coordinate-wise mean of multiple vectors, then re-normalizes to unit length (L2 norm = 1)
+ */
+export function computeMeanVector(vectors: number[][]): number[] {
+  if (vectors.length === 0) return new Array(384).fill(0);
+  if (vectors.length === 1) return [...vectors[0]!];
+
+  const dim = vectors[0]!.length;
+  const mean = new Array<number>(dim).fill(0);
+
+  for (const v of vectors) {
+    for (let i = 0; i < dim; i++) {
+      mean[i] = (mean[i] ?? 0) + v[i]!;
+    }
+  }
+
+  for (let i = 0; i < dim; i++) {
+    mean[i] = (mean[i] ?? 0) / vectors.length;
+  }
+
+  // Re-normalize to unit length
+  let norm = 0;
+  for (let i = 0; i < dim; i++) {
+    norm += (mean[i] ?? 0) * (mean[i] ?? 0);
+  }
+  norm = Math.sqrt(norm);
+
+  if (norm > 0) {
+    for (let i = 0; i < dim; i++) {
+      mean[i] = (mean[i] ?? 0) / norm;
+    }
+  }
+
+  return mean;
+}
+
+/**
+ * Inserts a CandidateChunk with pgvector embedding
+ */
+export async function insertCandidateChunk(
+  candidateId: string,
+  idx: number,
+  content: string,
+  embedding: number[]
+): Promise<void> {
+  const vectorStr = toVectorLiteral(embedding);
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "CandidateChunk" (id, "candidateId", idx, content, embedding)
+     VALUES (gen_random_uuid(), $1::uuid, $2, $3, $4::vector)`,
+    candidateId,
+    idx,
+    content,
+    vectorStr
+  );
+}
+
+/**
+ * Deletes all CandidateChunk rows for a candidate (for idempotent re-indexing)
+ */
+export async function deleteCandidateChunks(candidateId: string): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM "CandidateChunk" WHERE "candidateId" = $1::uuid`,
+    candidateId
+  );
+}
+
+/**
  * Candidate Knn search result
  */
 export interface CandidateKnnResult {
