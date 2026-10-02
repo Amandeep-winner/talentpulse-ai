@@ -394,3 +394,40 @@ Verified with 26 comprehensive unit, integration, and security tests in `apps/ap
 Tests confirm AST validation across all 5 views, LIMIT injection, LIMIT clamping, rejection of DML/DDL/admin keywords, rejection of forbidden functions and comments, rejection of hallucinated tables with `SQL_REJECTED`, preview endpoint validation, read-only role enforcement, statement timeout abortion, and strict tenant isolation across two independent organizations over both direct execution and HTTP API.
 Verified with React Testing Library tests in `apps/web/tests/ai-analyst.test.tsx` confirming validated SQL rendering with execution time and row count badges, and security refusal card display upon guardrail triggers.
 Monorepo verification gate passed with 0 lint errors, 0 type errors, 198/198 passing tests across 30 test suites, and clean Next.js production builds.
+
+---
+
+## Task 17 - Publisher Simulation Engine and Interactive Allocation Management
+
+### Problem
+Evaluating recruitment marketing strategies in production requires historical data that may not exist for new campaigns or nascent channels.
+Recruiters and talent acquisition leaders need to forecast how budget adjustments and bid variations impact impressions, candidate volume, and recruitment cost metrics before committing financial capital.
+However, naive simulation models produce unrealistic linear projections that ignore auction dynamics, audience saturation, diminishing marginal returns, stochastic variance, and publisher performance drift.
+Furthermore, campaign managers need interactive allocation management tools that enforce strict mathematical constraints (allocations summing to 100%) and prevent unmanaged budget deficits.
+
+### Decision
+Architect a deterministic publisher simulation engine and full-featured campaign allocation management system.
+First, build a pure mathematical simulator in `apps/api/src/modules/simulation/simulator.ts` adhering to realistic ad auction physics:
+Implement diminishing returns via a concave saturation curve where marginal clicks decrease as daily budget approaches publisher capacity.
+Model bid dynamics such that higher bids expand auction win rates and impression reach while increasing clearing cost per click (CPC).
+Incorporate pseudo-random stochastic noise using the deterministic Mulberry32 algorithm, introducing plus or minus 5 to 15 percent variance based on an explicit integer seed.
+Incorporate channel conversion drift over time (dayIndex) to simulate real-world phenomena such as audience fatigue or publisher optimization.
+Enforce strict funnel invariants across all generated stages: impressions >= clicks >= applications >= qualified >= interviews >= hires, with spend capped at budget.
+Second, define standard calibration profiles for 5 primary publisher types (`JobBoard Prime`, `SocialReach` with negative conversion drift, `SearchHire`, `AggregatorX` with positive conversion drift, and `ReferralNet`).
+Third, expose an authenticated API endpoint `POST /api/campaigns/:id/simulate` restricted to ADMIN and RECRUITER roles via RBAC.
+Generate synthetic events and daily spends across the requested simulation horizon, using deterministic event and spend identifiers to guarantee idempotent reruns.
+Fourth, build Next.js campaign detail views at `/campaigns/[id]` featuring KPI summary cards (Total Budget, Daily Budget, Pacing Indicator, Timeline), a Recharts donut chart visualizing channel allocation share, a publisher configuration table, an interactive allocation modal with real-time 100% sum validation, and a simulation runner dialog.
+
+### Alternative
+Generate synthetic traffic using uniform random distributions or unconstrained linear scaling without diminishing returns.
+
+### Why
+Linear simulations fail to prepare recruitment teams for the reality of audience saturation and increasing marginal acquisition costs.
+Concave saturation curves accurately mirror real-world pay-per-click recruitment platforms where expanding reach yields diminishing marginal returns.
+Mulberry32 seeded pseudo-random generation provides realistic daily variability while ensuring tests, demonstration scenarios, and reproducible analyses remain strictly deterministic.
+Idempotent database upserts prevent runaway data duplication when simulations are re-executed.
+
+### Result
+Verified with 11 unit and integration tests in `apps/api/tests/simulation.test.ts` validating Mulberry32 determinism, concave diminishing returns monotonicity, bid effects on impression reach and clearing CPC, negative and positive conversion drift, funnel invariants across all standard publisher profiles, RBAC authorization, and idempotent event ingestion.
+Verified with 2 React Testing Library tests in `apps/web/tests/campaign-detail.test.tsx` verifying campaign metadata rendering, donut chart display, channel tables, and simulation dialog execution.
+Monorepo verification gate passed with 0 lint errors, 0 type errors, 211/211 passing tests across 32 test suites, and clean Next.js production builds.

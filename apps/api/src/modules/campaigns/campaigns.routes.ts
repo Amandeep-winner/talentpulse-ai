@@ -34,4 +34,8 @@ router.post('/:id/spend', authorize('ADMIN', 'RECRUITER'), (req, res, next) => {
   campaignsController.recordSpend(req, res, next);
 });
 
+router.post('/:id/simulate', authorize('ADMIN', 'RECRUITER'), (req, res, next) => {
+  campaignsController.simulate(req, res, next);
+});
+
 export default router;

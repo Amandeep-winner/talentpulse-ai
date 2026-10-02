@@ -5,6 +5,7 @@ import {
   updateCampaignRequestSchema,
   setAllocationsRequestSchema,
   campaignSpendInputSchema,
+  campaignSimulateRequestSchema,
 } from '@talentpulse/shared';
 import { campaignsService } from './campaigns.service';
 
@@ -99,6 +100,20 @@ export class CampaignsController {
         parsedBody,
       );
       res.status(200).json({ message: 'Spend recorded successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async simulate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const parsedBody = campaignSimulateRequestSchema.parse(req.body);
+      const result = await campaignsService.simulateCampaign(
+        req.user!.organizationId,
+        req.params.id as string,
+        parsedBody
+      );
+      res.status(200).json({ data: result });
     } catch (error) {
       next(error);
     }

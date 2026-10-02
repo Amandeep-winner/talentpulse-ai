@@ -9,9 +9,11 @@ import {
   CampaignStatus,
   PaginationMeta,
   CampaignSpendInput,
+  CampaignSimulateResponse,
 } from '@talentpulse/shared';
 import { prisma } from '../../lib/prisma';
 import { NotFoundError, ValidationError } from '../../lib/errors/AppError';
+import { createMulberry32, getPublisherProfile, simulateDay } from '../simulation';
 
 type CampaignWithRelations = Prisma.CampaignGetPayload<{
   include: {
@@ -394,6 +396,150 @@ export class CampaignsService {
         amount: new Prisma.Decimal(data.amount),
       },
     });
+  }
+
+  async simulateCampaign(
+    organizationId: string,
+    campaignId: string,
+    options: { days: number; seed?: number }
+  ): Promise<CampaignSimulateResponse> {
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, organizationId },
+      include: {
+        job: true,
+        publishers: {
+          include: {
+            publisher: true,
+          },
+        },
+      },
+    });
+
+    if (!campaign) {
+      throw new NotFoundError('Campaign not found');
+    }
+
+    if (!campaign.publishers || campaign.publishers.length === 0) {
+      throw new ValidationError('Campaign has no publisher allocations configured.');
+    }
+
+    const days = Math.max(1, Math.min(90, options.days));
+    const rng = createMulberry32(options.seed ?? 42);
+
+    let eventsCreated = 0;
+    let spendsCreated = 0;
+    let totalImpressions = 0;
+    let totalClicks = 0;
+    let totalApplications = 0;
+    let totalHires = 0;
+    let totalSpend = 0;
+
+    for (let d = 0; d < days; d++) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - (days - 1 - d));
+      targetDate.setUTCHours(12, 0, 0, 0);
+      const dateStr = targetDate.toISOString().slice(0, 10);
+      const cleanDate = new Date(dateStr);
+
+      for (const cp of campaign.publishers) {
+        const profile = getPublisherProfile(cp.publisher.type || cp.publisher.name);
+        const bid = Number(cp.bidCpc) > 0 ? Number(cp.bidCpc) : profile.baseCpc;
+        const dailyBudget =
+          Number(cp.dailyBudget) > 0
+            ? Number(cp.dailyBudget)
+            : (Number(campaign.budget) / 30) * (Number(cp.allocationPct) / 100);
+
+        const result = simulateDay({
+          publisher: profile,
+          bid,
+          budget: dailyBudget,
+          jobContext: {
+            category: campaign.job?.category,
+            location: campaign.job?.location,
+            experienceLevel: campaign.job?.minExperienceYears,
+          },
+          rng,
+          dayIndex: d,
+        });
+
+        // Event creation / upsert
+        const eventTypes: Array<{
+          type: 'IMPRESSION' | 'CLICK' | 'APPLICATION_START' | 'APPLICATION' | 'INTERVIEW' | 'HIRE';
+          qty: number;
+          qualQty?: number;
+        }> = [
+          { type: 'IMPRESSION', qty: result.impressions },
+          { type: 'CLICK', qty: result.clicks },
+          { type: 'APPLICATION_START', qty: Math.round(result.clicks * 0.7) },
+          { type: 'APPLICATION', qty: result.applications, qualQty: result.qualified },
+          { type: 'INTERVIEW', qty: result.interviews },
+          { type: 'HIRE', qty: result.hires },
+        ];
+
+        for (const ev of eventTypes) {
+          const eventId = `sim-${campaignId}-${cp.publisherId}-${ev.type}-${dateStr}`;
+          await prisma.campaignEvent.upsert({
+            where: { eventId },
+            create: {
+              eventId,
+              organizationId,
+              campaignId,
+              publisherId: cp.publisherId,
+              eventType: ev.type,
+              quantity: ev.qty,
+              qualifiedQuantity: ev.qualQty ?? 0,
+              timestamp: targetDate,
+            },
+            update: {
+              quantity: ev.qty,
+              qualifiedQuantity: ev.qualQty ?? 0,
+              timestamp: targetDate,
+            },
+          });
+          eventsCreated++;
+        }
+
+        // Spend record upsert
+        await prisma.campaignSpend.upsert({
+          where: {
+            campaignId_publisherId_date: {
+              campaignId,
+              publisherId: cp.publisherId,
+              date: cleanDate,
+            },
+          },
+          create: {
+            organizationId,
+            campaignId,
+            publisherId: cp.publisherId,
+            date: cleanDate,
+            amount: new Prisma.Decimal(result.spend),
+          },
+          update: {
+            amount: new Prisma.Decimal(result.spend),
+          },
+        });
+        spendsCreated++;
+
+        totalImpressions += result.impressions;
+        totalClicks += result.clicks;
+        totalApplications += result.applications;
+        totalHires += result.hires;
+        totalSpend += result.spend;
+      }
+    }
+
+    return {
+      campaignId,
+      days,
+      eventsCreated,
+      spendsCreated,
+      totalImpressions,
+      totalClicks,
+      totalApplications,
+      totalHires,
+      totalSpend: Math.round(totalSpend * 100) / 100,
+    };
   }
 }
 

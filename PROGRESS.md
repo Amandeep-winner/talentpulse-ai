@@ -126,7 +126,13 @@ This document tracks implementation progress across all 34 tasks.
   - Enhanced Next.js `/ai` chat UI with validated SQL display, execution time (ms), row count, and friendly security refusal alerts on guardrail trigger.
   - Authored Architectural Decision Record `ADR-006-text-to-sql-safety.md`.
   - Verified with 26 API tests in `tests/sql.test.ts` and 2 web tests in `tests/ai-analyst.test.tsx` (total 198/198 tests passing).
-- [ ] Task 17: Campaign system & simulation engine
+- [x] Task 17: Campaign system & simulation engine
+  - Built pure simulation engine in `apps/api/src/modules/simulation/simulator.ts` implementing concave saturation curves with diminishing marginal clicks, bid multiplier auction dynamics, deterministic Mulberry32 RNG noise (+/-5-15%), and conversion drift.
+  - Implemented standard calibration profiles for all 5 publishers (`JobBoard Prime`, `SocialReach` with -0.012 daily drift, `SearchHire`, `AggregatorX` with +0.008 daily drift, and `ReferralNet`).
+  - Added request and response schemas in `@talentpulse/shared` (`campaignSimulateRequestSchema`, `campaignSimulateResponseSchema`).
+  - Mounted `POST /api/campaigns/:id/simulate` with ADMIN and RECRUITER role enforcement, writing idempotent event and spend records to PostgreSQL.
+  - Built Next.js campaign detail page at `/campaigns/[id]` with KPI summary cards, Recharts allocation donut chart, interactive allocation editor modal validating 100% sum, and simulation runner dialog.
+  - Verified with 11 API tests in `tests/simulation.test.ts` and 2 web tests in `tests/campaign-detail.test.tsx` (211/211 tests passing across monorepo).
 - [ ] Task 18: Campaign analytics
 - [ ] Task 19: Optimization engine (deterministic -> scored -> allocation)
 - [ ] Task 20: Contextual bandit + A/B experiments

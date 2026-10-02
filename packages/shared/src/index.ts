@@ -612,6 +612,25 @@ export const setAllocationsRequestSchema = z.object({
 });
 export type SetAllocationsRequest = z.infer<typeof setAllocationsRequestSchema>;
 
+export const campaignSimulateRequestSchema = z.object({
+  days: z.number().int().min(1).max(90).default(7),
+  seed: z.number().int().optional().default(42),
+});
+export type CampaignSimulateRequest = z.infer<typeof campaignSimulateRequestSchema>;
+
+export const campaignSimulateResponseSchema = z.object({
+  campaignId: z.string().uuid(),
+  days: z.number().int(),
+  eventsCreated: z.number().int(),
+  spendsCreated: z.number().int(),
+  totalImpressions: z.number().int(),
+  totalClicks: z.number().int(),
+  totalApplications: z.number().int(),
+  totalHires: z.number().int(),
+  totalSpend: z.number(),
+});
+export type CampaignSimulateResponse = z.infer<typeof campaignSimulateResponseSchema>;
+
 export const campaignPublisherItemSchema = z.object({
   id: z.string().uuid(),
   campaignId: z.string().uuid(),
