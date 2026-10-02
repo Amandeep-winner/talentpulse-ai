@@ -24,6 +24,7 @@ import analyticsRoutes from './modules/analytics/analytics.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import { knowledgeRouter } from './modules/knowledge/knowledge.routes';
 import { aiRouter } from './modules/ai/ai.routes';
+import { optimizationRoutes } from './modules/optimization';
 import { authenticateKeyOrJwt } from './middleware/auth';
 
 // Initialize Prometheus default metrics collection once
@@ -118,6 +119,7 @@ export function createApp(): Express {
   app.use('/api/admin', adminRoutes);
   app.use('/api/knowledge', knowledgeRouter);
   app.use('/api/ai', aiRouter);
+  app.use('/api/optimization', optimizationRoutes);
 
   if (env.NODE_ENV === 'test') {
     app.get('/api/test-key-auth', authenticateKeyOrJwt, (req, res) => {

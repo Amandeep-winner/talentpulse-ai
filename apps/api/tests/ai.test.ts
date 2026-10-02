@@ -265,7 +265,7 @@ describe('Ask TalentPulse Conversational Analyst (Task 15)', () => {
       expect(res.body.data.answer).toContain('TalentPulse AI Conversational Analyst');
     });
 
-    it('executes campaign_recommendation gracefully before Task 19', async () => {
+    it('executes campaign_recommendation with optimization engine in Task 19', async () => {
       const res = await request(app)
         .post('/api/ai/query')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -275,7 +275,7 @@ describe('Ask TalentPulse Conversational Analyst (Task 15)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.intent).toBe('campaign_recommendation');
-      expect(res.body.data.answer).toContain('Task 19');
+      expect(res.body.data.answer).toContain('campaign publisher allocations');
     });
 
     it('handles unsupported out-of-scope questions gracefully', async () => {

@@ -843,6 +843,78 @@ export interface CampaignPerformance {
   cph: number | null;
 }
 
+/**
+ * Recommendation and Optimization Enums and Interfaces
+ */
+export const RecommendationTypeEnum = z.enum([
+  'CANDIDATE_RANKING',
+  'CAMPAIGN_ALLOCATION',
+  'BANDIT_ACTION',
+  'FORECAST_ALERT',
+]);
+export type RecommendationType = z.infer<typeof RecommendationTypeEnum>;
+
+export const RecommendationStatusEnum = z.enum([
+  'PROPOSED',
+  'APPROVED',
+  'REJECTED',
+  'APPLIED',
+]);
+export type RecommendationStatus = z.infer<typeof RecommendationStatusEnum>;
+
+export const OptimizationRuleActionEnum = z.enum([
+  'reduce_allocation',
+  'increase_allocation',
+  'review_landing_quality',
+  'adjust_pacing',
+  'maintain_allocation',
+  'insufficient_volume',
+]);
+export type OptimizationRuleAction = z.infer<typeof OptimizationRuleActionEnum>;
+
+export interface OptimizationRuleActionItem {
+  publisherId: string;
+  publisherName: string;
+  action: OptimizationRuleAction;
+  reason: string;
+}
+
+export interface OptimizationDecision {
+  current: Record<string, number>;
+  recommended: Record<string, number>;
+  actions: OptimizationRuleActionItem[];
+}
+
+export interface RecommendationItem {
+  id: string;
+  organizationId: string;
+  userId?: string | null;
+  type: RecommendationType;
+  modelVersion: string;
+  inputRef: Record<string, unknown>;
+  decision: OptimizationDecision;
+  explanation: Record<string, unknown> | string;
+  confidence: number;
+  status: RecommendationStatus;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+  createdAt: string;
+}
+
+export const proposeOptimizationRequestSchema = z.object({
+  campaignId: z.string().uuid('Invalid campaignId format'),
+  weights: z
+    .object({
+      quality: z.number().optional(),
+      lambdaCpa: z.number().optional(),
+      lambdaCph: z.number().optional(),
+    })
+    .optional(),
+  tau: z.number().positive().optional(),
+});
+export type ProposeOptimizationRequest = z.infer<typeof proposeOptimizationRequestSchema>;
+
+
 
 
 

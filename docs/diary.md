@@ -471,3 +471,49 @@ Redis caching shields the database from repeated analytical aggregations across 
 Verified with 4 dedicated unit and integration tests in `apps/api/tests/campaign-analytics.test.ts` testing empty-data resilience, exact 7d vs prior 7d trend deltas, strict CPA-ascending publisher ranking, and campaign-specific filter isolation.
 Verified with updated React Testing Library test suites in `apps/web/tests/campaign-detail.test.tsx` and `apps/web/tests/analytics.test.tsx`.
 Monorepo verification gate passed with 0 lint errors, 0 type errors, 216/216 passing tests across 33 test suites, and clean Next.js production builds.
+
+## 2026-10-02 - Task 19: Optimization Engine (Deterministic Rules, Publisher Scoring & Constrained Softmax Allocation)
+
+### Context
+Recruitment campaigns spanning multiple publisher channels require continuous capital allocation rebalancing to maximize qualified candidate yield while controlling unit acquisition costs.
+Relying solely on unconstrained mathematical models risks extreme volatility and publisher starvation.
+Conversely, relying only on static heuristic rules fails to account for global budget balance, multi-objective trade-offs, and diminishing returns.
+The system requires an optimization engine that blends deterministic rule-based safety guards with multi-metric scoring and constrained Softmax allocation.
+Furthermore, the engine must produce an auditable recommendation trail adhering to responsible-AI practices, with strict role-based access control preventing analysts from modifying live budget allocations.
+
+### Decision
+Architect and implement `apps/api/src/modules/optimization/` composed of four core layers:
+1. Rule Engine (`rules.ts`): Evaluates publisher velocity over 7-day windows against prior-7-day baselines with a strict minimum-volume guard (clicks >= 50 required to act).
+Triggers `reduce_allocation` when CPA rises >10% and application rate falls >5%.
+Triggers `increase_allocation` when CPA drops >10% and qualified applications rise.
+Triggers `review_landing_quality` when CTR is healthy (>=2.5%) but conversion rate collapses (<= -20%).
+Triggers `adjust_pacing` when budget pacing exceeds 120% or falls below 70%.
+Falls back to `maintain_allocation` when metrics are stable, and `insufficient_volume` when clicks < 50.
+2. Scoring Engine (`score.ts`): Computes min-max normalized metrics for CPA and CPH across campaign publishers.
+Calculates publisher quality score as (qualified_applications / applications) * (1 + hireRate).
+Evaluates the composite objective score = w_q * quality - lambda1 * cpa_norm - lambda2 * cph_norm with configurable weights.
+3. Constrained Allocation (`allocate.ts`): Transforms composite scores into channel budget percentages via Softmax with temperature tau=0.5 and numerical stability shifts.
+Applies per-publisher dynamic bounds enforcing a 5.0% floor, a 50.0% cap, and a stability dampener clamping maximum change per run to +-10 percentage points from current allocation.
+Uses iterative clip-and-renormalize to achieve convergence and step-wise 0.01-increment remainder assignment guaranteeing an exact 100.00% sum without bound violations.
+4. Recommendation Management & RBAC (`optimization.service.ts`, `optimization.controller.ts`, `optimization.routes.ts`):
+Persists recommendations as `CAMPAIGN_ALLOCATION` with modelVersion `rules+score-v1`, volume-driven confidence scores, and natural language rationale.
+Mounts `POST /api/optimization/propose`, `GET /api/optimization/recommendations`, `GET /api/optimization/recommendations/:id`, `POST /api/optimization/recommendations/:id/approve`, and `POST /api/optimization/recommendations/:id/reject`.
+Enforces RBAC blocking ANALYST users from approving or rejecting recommendations with HTTP 403 Forbidden.
+On approval by ADMIN or RECRUITER, transactionally updates `CampaignPublisher` allocations and daily budgets while invalidating Redis cache namespaces.
+5. AI Pipeline Integration (`apps/api/src/modules/ai/pipeline.ts`): Re-enables the `campaign_recommendation` intent, querying the optimization engine to provide natural language advice, action lists, and comparative Recharts bar charts.
+6. Web Interface (`apps/web/app/optimize/page.tsx`): Built the `/optimize` page with campaign selection, "Propose Reallocation" triggering, side-by-side Recharts bar charts comparing current vs recommended percentages, heuristic diagnostics table, recommendation audit trail, and role-aware Approve/Reject controls.
+
+### Alternative
+A purely heuristic allocation without scoring would lack smooth multi-publisher trade-offs.
+An unconstrained optimization model without +-10 pp dampening would cause severe budget whiplash across consecutive runs.
+
+### Why
+Combining rule-based guards with constrained Softmax achieves high unit efficiency while preventing destabilizing allocation swings.
+Preserving an audit trail in `Recommendation` records satisfies responsible-AI explainability requirements.
+Enforcing RBAC both in route middleware and service logic guarantees tenant safety and prevents unauthorized spend adjustments.
+
+### Result
+Verified with 15 unit and integration tests in `apps/api/tests/optimization.test.ts` covering rule logic, scoring, constrained Softmax convergence, seeded scenario reallocations (reducing SocialReach and increasing AggregatorX), RBAC enforcement, and AI pipeline routing.
+Verified with 4 tests in `apps/web/tests/optimize.test.tsx` verifying UI rendering, proposal generation, approval flow, rejection flow, and Analyst read-only alerts.
+Monorepo verification gate passed with 0 lint errors, 0 type errors, 235/235 passing tests across 35 test suites, and clean Next.js production builds.
+

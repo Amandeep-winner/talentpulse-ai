@@ -5,6 +5,7 @@ import { diagnoseMetricChange } from './tools/diagnose';
 import { executeAnalyticalQuery } from './tools/sql';
 import { searchCandidatesTool } from './tools/candidateSearch';
 import { knowledgeService } from '../knowledge/knowledge.service';
+import { optimizationService } from '../optimization/optimization.service';
 import { AiPipelineContext, AiPipelineOutput } from './types';
 import { AiIntent, AiChartSpec, KnowledgeCitation } from '@talentpulse/shared';
 
@@ -186,9 +187,67 @@ The primary driver behind this decline is **${diag.primaryDriver.publisherName}*
 
     case 'campaign_recommendation': {
       steps.push('Consulting campaign optimization engine');
+      const activeCampaign =
+        (await prisma.campaign.findFirst({
+          where: { organizationId, status: 'ACTIVE' },
+          include: { publishers: { include: { publisher: true } } },
+          orderBy: { createdAt: 'desc' },
+        })) ||
+        (await prisma.campaign.findFirst({
+          where: { organizationId },
+          include: { publishers: { include: { publisher: true } } },
+          orderBy: { createdAt: 'desc' },
+        }));
+
+      if (!activeCampaign || activeCampaign.publishers.length === 0) {
+        answer =
+          'No active campaigns with configured publisher channels were found. Please configure campaign publisher allocations first to generate optimization proposals.';
+        confidence = 0.5;
+        break;
+      }
+
+      steps.push(`Generating constrained budget allocation proposal for campaign "${activeCampaign.name}"`);
+      const proposal = await recordTool(
+        'optimizer',
+        'propose_optimization',
+        { campaignId: activeCampaign.id },
+        () => optimizationService.propose(organizationId, { campaignId: activeCampaign.id }, userId)
+      );
+
+      const decision = proposal.decision;
+      const explanation = proposal.explanation as { summary?: string; details?: string[] };
+
       answer =
-        'Campaign budget optimization and automated allocation models are scheduled for Task 19. You can review current allocations on the Campaigns page or run a Metric Diagnosis to assess publisher ROI.';
-      confidence = 0.85;
+        `### Budget Optimization Proposal: ${activeCampaign.name}\n\n` +
+        `${explanation.summary || 'Deterministic heuristics and Softmax allocation proposal.'}\n\n` +
+        `**Key Actions:**\n` +
+        (explanation.details || []).join('\n') +
+        `\n\n*Confidence Score: ${(proposal.confidence * 100).toFixed(0)}% (Model: ${proposal.modelVersion})*`;
+
+      recommendations = decision.actions.map(
+        (a) => `${a.publisherName}: ${a.action.replace(/_/g, ' ').toUpperCase()} - ${a.reason}`
+      );
+
+      const chartData = activeCampaign.publishers.map((cp) => {
+        const pName = cp.publisher.name;
+        const currentPct = decision.current[cp.publisherId] ?? 0;
+        const recommendedPct = decision.recommended[cp.publisherId] ?? 0;
+        return {
+          channel: pName,
+          current: currentPct,
+          recommended: recommendedPct,
+        };
+      });
+
+      chart = {
+        type: 'bar',
+        title: `Publisher Budget Allocation (%): Current vs Recommended (${activeCampaign.name})`,
+        xKey: 'channel',
+        series: ['current', 'recommended'],
+        data: chartData,
+      };
+
+      confidence = proposal.confidence;
       break;
     }
 

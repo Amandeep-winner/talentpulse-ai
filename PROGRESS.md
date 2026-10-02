@@ -139,8 +139,16 @@ This document tracks implementation progress across all 34 tasks.
   - Implemented CPA-ascending efficiency ranking algorithm with application and click tiebreakers and 60s Redis caching.
   - Built interactive Performance & Analytics tab on `/campaigns/[id]` with time horizon selectors, publisher performance benchmark cards, comparative Recharts bar chart, efficiency ranking table, and funnel stage progression breakdown.
   - Enhanced `/analytics` channels tab with publisher cards and CPQA columns.
-  - Verified with 4 integration tests in `tests/campaign-analytics.test.ts` and updated web suites in `tests/campaign-detail.test.tsx` and `tests/analytics.test.tsx` (total 216/216 passing tests across monorepo).
-- [ ] Task 19: Optimization engine (deterministic -> scored -> allocation)
+- [x] Task 19: Optimization engine (deterministic -> scored -> allocation)
+  - Built pure rule engine in `apps/api/src/modules/optimization/rules.ts` with minimum-volume guard (>=50 clicks), `reduce_allocation`, `increase_allocation`, `review_landing_quality`, and `adjust_pacing`.
+  - Implemented multi-metric normalization and scoring in `score.ts` balancing candidate quality yield against CPA and CPH penalty weights.
+  - Implemented numerically stable Softmax allocation in `allocate.ts` with iterative clip-and-renormalize within [5.0%, 50.0%], max change dampener (+-10 pp), and step-wise remainder balancing guaranteeing an exact 100.00% sum.
+  - Implemented `OptimizationService`, controller, and routes mounting `/api/optimization/propose`, `/recommendations`, and `/recommendations/:id/approve|reject`.
+  - Enforced strict RBAC blocking ANALYST role from approving or rejecting recommendations with HTTP 403 Forbidden.
+  - Transactionally applied approved reallocations to `CampaignPublisher` with Redis cache invalidation and status marked `APPLIED`.
+  - Re-enabled `campaign_recommendation` intent in `runAiPipeline`, generating natural language proposals and Recharts bar charts.
+  - Built Next.js `/optimize` page with campaign picker, side-by-side current vs recommended allocation Recharts bar charts, heuristic diagnostics table, recommendation audit trail, and role-aware Approve/Reject controls.
+  - Verified with 15 unit/integration tests in `tests/optimization.test.ts` and 4 web tests in `tests/optimize.test.tsx` (total 235/235 passing tests across monorepo).
 - [ ] Task 20: Contextual bandit + A/B experiments
 - [ ] Task 21: Predictive intelligence (ML service)
 - [ ] Task 22: Forecasting
@@ -174,7 +182,7 @@ This document tracks implementation progress across all 34 tasks.
 - [x] RAG with citations and safe empty-retrieval behavior
 - [x] Ask TalentPulse: diagnosis, SQL view, chart, recommendations
 - [x] Text-to-SQL guarded by AST validation, read-only role, tenant GUC, timeout
-- [ ] Optimizer (rules + scoring + constrained allocation) with approve/reject flow
+- [x] Optimizer (rules + scoring + constrained allocation) with approve/reject flow
 - [ ] Bandit lab (LinUCB, epsilon-greedy, baselines) + A/B experiments with significance test
 - [ ] ML predictions (application/fill probability, risk) with evaluation metrics
 - [ ] Forecasting with backtest metrics and shortfall alerts
