@@ -103,3 +103,36 @@ Verified with 7 new API integration tests covering valid linear transitions, any
 Automated React Testing Library suite verifies Kanban board column rendering, candidate stage advancement, and view toggling.
 Next.js production build confirms static generation of `/applications` route.
 
+---
+
+## Task 09 - High-Throughput Idempotent Funnel Ingestion & Campaign Allocation Architecture
+
+### Problem
+Recruitment marketing platforms consume high-frequency event streams (impressions, clicks, application starts, applications) from third-party job boards, aggregators, and social networks.
+These external publishers deliver events asynchronously over unreliable connections with automated retries, causing duplicate deliveries and out-of-order events.
+Double counting events directly corrupts candidate acquisition cost (CAC), cost per click (CPC), and funnel conversion metrics.
+Furthermore, manual budget allocations across publisher networks risk misallocation if percentages do not sum to 100%.
+
+### Decision
+Implement an idempotent event ingestion engine supporting single events and batches up to 500 records authenticated via either JWT Bearer or high-entropy API keys (`x-api-key`).
+Require an immutable `eventId` on every incoming event.
+Verify that both `campaignId` and `publisherId` exist and belong to the authenticated organization before ingestion.
+Enforce funnel ordering sanity by rejecting events where `qualifiedQuantity > quantity`.
+Deduplicate incoming batches against both the database and intra-batch duplicates, leveraging PostgreSQL unique constraints with `skipDuplicates` to safely absorb concurrent race conditions.
+Replayed events return HTTP 200 with `{ accepted, duplicates, rejected }` reporting, guaranteeing at-least-once delivery without double counting.
+For campaign management, enforce strict 100% allocation sum checks across publishers in both the service layer and the interactive web interface.
+
+### Alternative
+Reject entire batches with HTTP 409 when duplicate events appear, or offload deduplication to distributed stream consumers like Kafka.
+
+### Why
+Returning errors on duplicate events causes external job boards and webhook emitters to enter exponential backoff retry storms, saturating server capacity.
+Returning HTTP 200 with duplicate counts fulfills idempotent ingest contracts cleanly.
+Enforcing 100% budget allocation constraints ensures campaign simulation and downstream spend optimization algorithms receive mathematically consistent inputs.
+
+### Result
+Verified with 7 new API integration tests, including a 50-thread parallel concurrent ingestion test confirming exactly 1 database insert and 49 duplicate detections.
+Web interface provides real-time allocation percentage validation, publisher management, and an interactive event simulator for administrators.
+Full test suite across monorepo passes with 61 green tests and static route generation for `/campaigns`.
+
+

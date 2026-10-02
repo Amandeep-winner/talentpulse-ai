@@ -17,6 +17,9 @@ import { apiKeysRoutes } from './modules/api-keys/api-keys.routes';
 import { jobsRoutes } from './modules/jobs/jobs.routes';
 import { candidatesRoutes } from './modules/candidates/candidates.routes';
 import applicationsRoutes from './modules/applications/applications.routes';
+import publishersRoutes from './modules/publishers/publishers.routes';
+import campaignsRoutes from './modules/campaigns/campaigns.routes';
+import eventsRoutes from './modules/events/events.routes';
 import { authenticateKeyOrJwt } from './middleware/auth';
 
 // Initialize Prometheus default metrics collection once
@@ -104,6 +107,9 @@ export function createApp(): Express {
   app.use('/api/jobs', jobsRoutes);
   app.use('/api/candidates', candidatesRoutes);
   app.use('/api/applications', applicationsRoutes);
+  app.use('/api/publishers', publishersRoutes);
+  app.use('/api/campaigns', campaignsRoutes);
+  app.use('/api/events', eventsRoutes);
 
   if (env.NODE_ENV === 'test') {
     app.get('/api/test-key-auth', authenticateKeyOrJwt, (req, res) => {

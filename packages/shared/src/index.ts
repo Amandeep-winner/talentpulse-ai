@@ -339,4 +339,171 @@ export const applicationItemSchema = z.object({
 });
 export type ApplicationItem = z.infer<typeof applicationItemSchema>;
 
+/**
+ * Publishers Enums and Schemas
+ */
+export const PublisherTypeEnum = z.enum(['JOB_BOARD', 'SOCIAL', 'SEARCH', 'AGGREGATOR', 'REFERRAL']);
+export type PublisherType = z.infer<typeof PublisherTypeEnum>;
+
+export const createPublisherRequestSchema = z.object({
+  name: z.string().min(2, 'Publisher name must be at least 2 characters'),
+  type: PublisherTypeEnum,
+});
+export type CreatePublisherRequest = z.infer<typeof createPublisherRequestSchema>;
+
+export const updatePublisherRequestSchema = createPublisherRequestSchema.partial();
+export type UpdatePublisherRequest = z.infer<typeof updatePublisherRequestSchema>;
+
+export const publisherItemSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  name: z.string(),
+  type: PublisherTypeEnum,
+});
+export type PublisherItem = z.infer<typeof publisherItemSchema>;
+
+/**
+ * Campaigns Enums and Schemas
+ */
+export const CampaignStatusEnum = z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED']);
+export type CampaignStatus = z.infer<typeof CampaignStatusEnum>;
+
+export const campaignAllocationInputSchema = z.object({
+  publisherId: z.string().uuid('Invalid publisher ID format'),
+  allocationPct: z.number().min(0).max(100),
+  bidCpc: z.number().nonnegative(),
+  dailyBudget: z.number().nonnegative(),
+});
+export type CampaignAllocationInput = z.infer<typeof campaignAllocationInputSchema>;
+
+export const createCampaignRequestSchema = z.object({
+  jobId: z.string().uuid('Invalid job ID format'),
+  name: z.string().min(2, 'Campaign name must be at least 2 characters'),
+  budget: z.number().positive('Budget must be positive'),
+  status: CampaignStatusEnum.optional().default('DRAFT'),
+  startDate: z.string(),
+  endDate: z.string().optional().nullable(),
+  allocations: z.array(campaignAllocationInputSchema).optional(),
+});
+export type CreateCampaignRequest = z.infer<typeof createCampaignRequestSchema>;
+
+export const updateCampaignRequestSchema = z.object({
+  name: z.string().min(2).optional(),
+  budget: z.number().positive().optional(),
+  status: CampaignStatusEnum.optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional().nullable(),
+});
+export type UpdateCampaignRequest = z.infer<typeof updateCampaignRequestSchema>;
+
+export const setAllocationsRequestSchema = z.object({
+  allocations: z.array(campaignAllocationInputSchema),
+});
+export type SetAllocationsRequest = z.infer<typeof setAllocationsRequestSchema>;
+
+export const campaignPublisherItemSchema = z.object({
+  id: z.string().uuid(),
+  campaignId: z.string().uuid(),
+  publisherId: z.string().uuid(),
+  allocationPct: z.number(),
+  bidCpc: z.number(),
+  dailyBudget: z.number(),
+  publisher: publisherItemSchema.optional(),
+});
+export type CampaignPublisherItem = z.infer<typeof campaignPublisherItemSchema>;
+
+export const campaignItemSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  jobId: z.string().uuid(),
+  name: z.string(),
+  budget: z.number(),
+  status: CampaignStatusEnum,
+  startDate: z.string(),
+  endDate: z.string().nullable().optional(),
+  createdAt: z.string(),
+  job: z.object({
+    id: z.string().uuid(),
+    title: z.string(),
+    location: z.string(),
+  }).optional(),
+  publishers: z.array(campaignPublisherItemSchema).optional(),
+});
+export type CampaignItem = z.infer<typeof campaignItemSchema>;
+
+export const campaignFilterQuerySchema = paginationQuerySchema.extend({
+  status: CampaignStatusEnum.optional(),
+  jobId: z.string().uuid().optional(),
+  q: z.string().optional(),
+});
+export type CampaignFilterQuery = z.infer<typeof campaignFilterQuerySchema>;
+
+/**
+ * Events Ingestion Schemas
+ */
+export const EventTypeEnum = z.enum([
+  'IMPRESSION',
+  'CLICK',
+  'APPLICATION_START',
+  'APPLICATION',
+  'INTERVIEW',
+  'HIRE',
+]);
+export type EventType = z.infer<typeof EventTypeEnum>;
+
+export const eventInputSchema = z.object({
+  eventId: z.string().min(1, 'eventId is required').max(128, 'eventId must be <= 128 characters'),
+  campaignId: z.string().uuid('Invalid campaignId format'),
+  publisherId: z.string().uuid('Invalid publisherId format'),
+  eventType: EventTypeEnum,
+  timestamp: z.string(),
+  quantity: z.number().int().positive().optional().default(1),
+  qualifiedQuantity: z.number().int().nonnegative().optional().default(0),
+  metadata: z.record(z.unknown()).optional().nullable(),
+});
+export type EventInput = z.infer<typeof eventInputSchema>;
+
+export const eventsBatchRequestSchema = z.union([
+  eventInputSchema,
+  z.object({
+    events: z.array(eventInputSchema).max(500, 'Batch size cannot exceed 500 events'),
+  }),
+]);
+export type EventsBatchRequest = z.infer<typeof eventsBatchRequestSchema>;
+
+export const eventItemSchema = z.object({
+  id: z.string().uuid(),
+  eventId: z.string(),
+  organizationId: z.string().uuid(),
+  campaignId: z.string().uuid(),
+  publisherId: z.string().uuid(),
+  eventType: EventTypeEnum,
+  quantity: z.number(),
+  qualifiedQuantity: z.number(),
+  timestamp: z.string(),
+  metadata: z.record(z.unknown()).nullable().optional(),
+  createdAt: z.string(),
+});
+export type EventItem = z.infer<typeof eventItemSchema>;
+
+export const eventsIngestionResponseSchema = z.object({
+  accepted: z.number().int().nonnegative(),
+  duplicates: z.number().int().nonnegative(),
+  rejected: z.array(
+    z.object({
+      eventId: z.string(),
+      reason: z.string(),
+    }),
+  ),
+});
+export type EventsIngestionResponse = z.infer<typeof eventsIngestionResponseSchema>;
+
+export const campaignSpendInputSchema = z.object({
+  publisherId: z.string().uuid('Invalid publisherId format'),
+  date: z.string(),
+  amount: z.number().nonnegative('Spend amount must be nonnegative'),
+});
+export type CampaignSpendInput = z.infer<typeof campaignSpendInputSchema>;
+
+
 

@@ -53,8 +53,16 @@ This document tracks implementation progress across all 34 tasks.
   - Implemented multi-tenant isolation and RBAC checks (ADMIN/RECRUITER write, ANALYST read-only).
   - Built Next.js Kanban board UI with stage counts, quick stage advancement, inline status move selector, and dual Kanban/Table views.
   - Built new application creation modal allowing recruiters to link candidates to open requisitions.
-  - Verified with 7 new API integration tests and 3 new web unit tests covering transitions, terminal states, duplicate prevention, and UI interactions.
-- [ ] Task 09: Events (funnel ingestion with idempotency)
+- [x] Task 09: Events (funnel ingestion with idempotency)
+  - Built Publishers module supporting multi-tenant channel configurations across job boards, social, search, and aggregators.
+  - Built Campaigns module with budget tracking, date boundaries, job requisition linkage, and strict 100% allocation sum validation across channels.
+  - Implemented campaign daily spend tracking (`/spend`) with date-keyed upserts.
+  - Built high-throughput Events ingestion engine (`/api/events`) supporting single events or batches up to 500 records.
+  - Protected events ingestion with dual authentication via JWT Bearer or programmatic API keys (`x-api-key`).
+  - Enforced funnel ordering sanity by rejecting events where `qualifiedQuantity > quantity`.
+  - Implemented idempotent replay deduplication returning HTTP 200 with `{ accepted, duplicates, rejected }` counts to prevent retry storms.
+  - Built Next.js `/campaigns` interface with budget KPI cards, channel management, real-time allocation percentage validation, and an interactive Admin Event Simulator.
+  - Verified with 7 new API integration tests (including 50-thread concurrent deduplication) and 3 new web unit tests.
 - [ ] Task 10: Analytics engine
 - [ ] Task 11: Candidate & job embeddings (pipeline)
 - [ ] Task 12: Vector search
