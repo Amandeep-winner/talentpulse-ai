@@ -136,3 +136,36 @@ Web interface provides real-time allocation percentage validation, publisher man
 Full test suite across monorepo passes with 61 green tests and static route generation for `/campaigns`.
 
 
+---
+
+## Task 10 - Analytics Engine, Deterministic Synthetic Seeding & Interactive Intelligence Dashboards
+
+### Problem
+Recruitment marketing and funnel optimization require accurate statistical metrics that protect against division by zero while preserving period-over-period comparison velocity.
+Without a single source of truth for metric calculations, different platform components compute divergent formulas for CTR, CPA, CPQA, and CPH.
+Additionally, developing and validating downstream AI agents, Bayesian multi-armed bandits, and text-to-SQL capabilities requires a realistic, deterministic synthetic dataset.
+This synthetic data must reflect genuine operational anomalies, including channel degradation and seasonal trends, rather than naive random distributions.
+
+### Decision
+Implement `modules/analytics/metrics.ts` as a pure, functional calculation module with 100% test coverage.
+Enforce division-by-zero protection by returning `null` whenever denominators are non-positive, while returning `0` when numerators are zero.
+Build `analytics.service.ts` to compute tenant-scoped aggregations for overview totals, period deltas, 7-stage funnels, publisher comparisons, campaign summaries, and daily/weekly timeseries.
+Implement Redis caching with a 120-second TTL to accelerate repeated analytical queries.
+Author `prisma/seed.ts` using the Mulberry32 seeded pseudo-random number generator (seed 42) to produce an idempotent, production-grade synthetic dataset.
+Seed Demo Talent Co with 3 standard users, 161 categorized skills, 30 jobs across 6 Indian tech hubs and remote, 400 candidate profiles with substantive resumes, 1,500 state-machine applications, 12 campaigns, 22,056 events, 5,400 daily spends, 8 comprehensive knowledge documents (460-603 words each), and 1 running headline optimization experiment.
+Engineered key diagnostic scenarios into the seed data: SocialReach application rates degrade by ~35% over the last 21 days with rising CPA, AggregatorX steadily improves over 30 days, ReferralNet delivers low volume with high conversion, and total applications fall by ~18% in the last 30 days vs the prior period.
+Build responsive, dark-themed frontend dashboards in Next.js at `/dashboard` and `/analytics` using Recharts area, line, and bar charts with loading skeletons, anomaly banners, and parametric filters.
+
+### Alternative
+Compute analytics dynamically on the client side from raw event streams, or rely on non-deterministic faker libraries for seed generation.
+
+### Why
+Client-side aggregations degrade client performance when processing tens of thousands of event rows and compromise multi-tenant security boundaries.
+Non-deterministic seed generation produces unpredictable test fixtures that break regression tests and impede reproducible automated evaluations.
+Pure functional metric calculation guarantees mathematical consistency across REST endpoints, SQL views, and future AI analysis tools.
+
+### Result
+Verified with 18 pure metric unit tests and 6 API integration tests validating funnel computations, period deltas, and multi-tenant isolation.
+Frontend verified with React Testing Library tests covering KPI cards, funnel progression, publisher comparisons, and filter interactions.
+Full monorepo verification gate passes with 0 lint errors, 0 type errors, and 87/87 passing tests across all workspaces.
+Production builds cleanly prerender both `/dashboard` and `/analytics` routes.

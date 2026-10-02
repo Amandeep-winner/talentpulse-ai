@@ -62,8 +62,15 @@ This document tracks implementation progress across all 34 tasks.
   - Enforced funnel ordering sanity by rejecting events where `qualifiedQuantity > quantity`.
   - Implemented idempotent replay deduplication returning HTTP 200 with `{ accepted, duplicates, rejected }` counts to prevent retry storms.
   - Built Next.js `/campaigns` interface with budget KPI cards, channel management, real-time allocation percentage validation, and an interactive Admin Event Simulator.
-  - Verified with 7 new API integration tests (including 50-thread concurrent deduplication) and 3 new web unit tests.
-- [ ] Task 10: Analytics engine
+- [x] Task 10: Analytics engine
+  - Implemented pure functional metric calculation library `metrics.ts` covering CTR, ApplicationRate, InterviewRate, HireRate, CPC, CPA, CPQA, CPH, and period deltas with division-by-zero protection.
+  - Built tenant-scoped analytics aggregation engine in `analytics.service.ts` supporting overview totals, period deltas, 7-stage recruitment funnel progression, daily/weekly timeseries, publisher performance, and campaign summary tables.
+  - Added Redis caching with a 120-second TTL to accelerate analytical queries.
+  - Authored deterministic Mulberry32-seeded synthetic seed script (`prisma/seed.ts`, seed 42) producing 3 demo users, 161 taxonomy skills, 30 jobs across 6 Indian tech hubs and remote, 400 candidate profiles with substantive resumes, 1,500 state-machine applications, 12 campaigns, 22,056 events, 5,400 daily spends, 8 knowledge documents (460-603 words each), and 1 running experiment.
+  - Engineered realistic diagnostic scenarios: SocialReach application rate degrades ~35% in recent 21 days with rising CPA, AggregatorX steadily improves over 30 days, ReferralNet provides low volume with high conversion, and macro applications fall ~18% in the last 30 days.
+  - Built interactive, dark-themed frontend dashboards in Next.js at `/dashboard` and `/analytics` using Recharts area, line, and bar charts with loading skeletons, anomaly banners, and parametric filters.
+  - Verified with 18 pure metric unit tests, 6 API integration tests, and 2 React Testing Library web suites.
+  - All verification gates passed (lint, typecheck, 87/87 tests, build).
 - [ ] Task 11: Candidate & job embeddings (pipeline)
 - [ ] Task 12: Vector search
 - [ ] Task 13: Hybrid candidate ranking (explainable)
@@ -93,14 +100,14 @@ This document tracks implementation progress across all 34 tasks.
 
 ### Run & build
 - [ ] `docker compose up --build` brings up web, api, worker, postgres, redis, ml, mock-ats healthy
-- [ ] `npm run db:reset && npm run db:seed` is repeatable and deterministic
+- [x] `npm run db:reset && npm run db:seed` is repeatable and deterministic
 - [ ] `npm run verify` green; `pytest` green; coverage gates met
 
 ### Product
 - [ ] Register/login/refresh/logout with RBAC across 3 roles; tenant isolation proven by tests
 - [ ] Jobs, candidates, applications, campaigns, publishers CRUD (API + UI)
 - [ ] Idempotent event ingestion (single + batch + concurrent duplicate test)
-- [ ] Dashboard + analytics with CTR/app rate/CPC/CPA/CPH, funnel, time series, publisher/campaign comparisons
+- [x] Dashboard + analytics with CTR/app rate/CPC/CPA/CPH, funnel, time series, publisher/campaign comparisons
 - [ ] Embeddings + semantic candidate search (pgvector)
 - [ ] Hybrid ranking with reasons, gaps, confidence, audit record
 - [ ] RAG with citations and safe empty-retrieval behavior

@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
+    "db:seed": "tsx ../../prisma/seed.ts",
     "test": "jest --runInBand --forceExit",
     "test:coverage": "jest --runInBand --coverage --forceExit"
   },

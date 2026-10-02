@@ -505,5 +505,89 @@ export const campaignSpendInputSchema = z.object({
 });
 export type CampaignSpendInput = z.infer<typeof campaignSpendInputSchema>;
 
+/**
+ * Analytics Enums and Interfaces
+ */
+export interface AnalyticsOverview {
+  period: { from: string; to: string };
+  previousPeriod: { from: string; to: string };
+  totals: {
+    jobs: number;
+    applications: number;
+    interviews: number;
+    hires: number;
+    spend: number;
+    impressions: number;
+    clicks: number;
+    cpa: number | null;
+    cph: number | null;
+    ctr: number | null;
+    applicationRate: number | null;
+    conversionRate: number | null;
+  };
+  deltas: {
+    jobs: number | null;
+    applications: number | null;
+    interviews: number | null;
+    hires: number | null;
+    spend: number | null;
+    cpa: number | null;
+    cph: number | null;
+    conversionRate: number | null;
+  };
+}
+
+export interface FunnelStage {
+  stage: string;
+  name?: string;
+  count: number;
+  conversionRate: number | null;
+  overallConversionRate: number | null;
+  dropOffRate?: number | null;
+}
+
+export interface TimeSeriesPoint {
+  date: string;
+  impressions: number;
+  clicks: number;
+  applications: number;
+  hires: number;
+  spend: number;
+}
+
+export interface PublisherPerformance {
+  publisherId: string;
+  publisherName: string;
+  publisherType: PublisherType;
+  impressions: number;
+  clicks: number;
+  applications: number;
+  qualifiedApplications: number;
+  interviews: number;
+  hires: number;
+  spend: number;
+  ctr: number | null;
+  applicationRate: number | null;
+  cpc: number | null;
+  cpa: number | null;
+  cph: number | null;
+}
+
+export interface CampaignPerformance {
+  campaignId: string;
+  campaignName: string;
+  jobTitle: string;
+  status: CampaignStatus;
+  budget: number;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  applications: number;
+  hires: number;
+  cpa: number | null;
+  cph: number | null;
+}
+
+
 
 
