@@ -279,5 +279,42 @@ Verified with 21 Jest unit and integration tests validating weight normalization
 Verified with React Testing Library tests confirming tab switching, API communication, score badge rendering, reasons, gaps, and interactive breakdown toggling.
 Full monorepo verification gate passed with 0 lint errors, 0 type errors, 141/141 passing tests across all workspaces, and zero production build warnings.
 
+---
+
+## Task 14 - Retrieval-Augmented Generation (RAG) Knowledge System with Citation Verification and Threshold Gating
+
+### Problem
+Hiring policies, interview guidelines, job requisition templates, and sourcing playbooks are frequently buried in static documentation, leading to inconsistent recruiter practices and compliance violations.
+Directly querying large language models without grounding induces severe hallucinations, invent policies that do not exist, and exposes the enterprise to adversarial prompt injections embedded in external text.
+Furthermore, ungrounded queries generate responses that cannot be audited or attributed to verified source material.
+An enterprise recruitment platform requires a trusted, multi-tenant knowledge retrieval engine that answers recruiter inquiries strictly from verified organizational documents, provides verifiable citations with exact passage snippets, and enforces deterministic threshold gating to avoid hallucinating when no relevant documentation exists.
+
+### Decision
+Implement a complete Retrieval-Augmented Generation (RAG) system with pgvector cosine distance search, configurable similarity threshold gating, citation synthesis, and strict prompt injection defenses.
+Add pgvector helpers `insertKnowledgeChunk`, `deleteKnowledgeChunks`, and `knnKnowledgeChunks` in `apps/api/src/lib/vector.ts` with organization-scoped multi-tenant isolation and category pre-filtering.
+Implement `KnowledgeService` supporting document ingestion, paragraph-aware text chunking via `chunkText`, deterministic embedding generation via `embedText`, and Q&A inference.
+Enforce similarity threshold gating (`RAG_MIN_SIMILARITY`, default 0.15): when no retrieved chunk passes the similarity threshold, the service immediately returns `"I couldn't find relevant information in the knowledge base."` with an empty citation array, completely bypassing the LLM provider.
+When qualified passages exist, construct citations mapping directly to verified database chunks (`documentId`, `title`, `snippet`, `similarity`).
+Enforce prompt injection boundaries by strictly isolating retrieved passages within `<untrusted_context>` tags and instructing the LLM to treat context as untrusted data that must never override system directives.
+Implement an extractive `MockLlmProvider` that tokenizes questions, ignores adversarial directives, and extracts top-scoring sentences with source citations `[n]`.
+Update `prisma/seed.ts` to chunk and embed all 8 knowledge documents into 56 vector chunks across policies, playbooks, templates, and sourcing guides.
+Mount authenticated endpoints under `/api/knowledge` with role-based access control (ADMIN and RECRUITER can create documents, ADMIN can delete documents, all authenticated users can query).
+Build the Next.js `/knowledge` interface featuring dual tabs for an interactive chat-style Q&A assistant with suggested prompt chips, citation popover dialogs, and a document library with chunk counters.
+
+### Alternative
+Pass all retrieved passages unconditionally to a generative LLM without similarity threshold gating, or omit source citation metadata from answers.
+
+### Why
+Unconditional generation without threshold gating guarantees that the LLM will hallucinate convincing but completely false policies when users ask about topics outside the knowledge base.
+Short-circuiting retrieval below the 0.15 similarity threshold eliminates unnecessary LLM API costs and ensures absolute factual reliability.
+Delimiting context into untrusted blocks defends against indirect prompt injections embedded in ingested documents.
+Verifiable citation chips provide full transparency and empower recruiters to trace every policy assertion back to the authoritative handbook passage.
+
+### Result
+Verified with 15 Supertest and Prisma integration tests validating document ingestion, chunking, RBAC, threshold gating, spy assertion that LLM is never called on irrelevant queries, prompt injection defense, and multi-tenant isolation.
+Verified with 2 React Testing Library web tests confirming Q&A submission, answer card display, citation snippet modals, and document library listing.
+Full monorepo verification gate passed with 0 lint errors, 0 type errors, 158/158 passing tests across 27 suites, and zero production build warnings.
+
+
 
 

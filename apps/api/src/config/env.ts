@@ -22,6 +22,7 @@ export const envSchema = z.object({
   EMBEDDING_API_KEY: z.string().optional().default(''),
   EMBEDDING_BASE_URL: z.string().optional().default(''),
   EMBEDDING_DIM: z.coerce.number().int().default(384),
+  RAG_MIN_SIMILARITY: z.coerce.number().min(0).max(1).default(0.15),
   ML_SERVICE_URL: z.string().url().default('http://localhost:8000'),
   ML_SERVICE_TOKEN: z.string().default('dev-ml-token'),
   ATS_BASE_URL: z.string().url().default('http://localhost:4100'),

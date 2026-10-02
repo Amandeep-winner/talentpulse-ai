@@ -96,7 +96,16 @@ This document tracks implementation progress across all 34 tasks.
   - Authored Architectural Decision Record `ADR-001-hybrid-candidate-ranking.md`.
   - Built Next.js `/jobs/[id]` "AI Matches" tab with fit badges, confidence chips, reasons, gaps, 6-factor score breakdown drawer, and client-side CSV export.
   - Verified with 21 Jest unit/integration tests and 1 React Testing Library web test.
-- [ ] Task 14: RAG knowledge system
+- [x] Task 14: RAG knowledge system
+  - Built Knowledge module with document ingestion, paragraph-aware text chunking (`chunkText`), and deterministic pgvector embedding generation (`embedText`).
+  - Added pgvector helpers in `lib/vector.ts` (`insertKnowledgeChunk`, `deleteKnowledgeChunks`, `knnKnowledgeChunks`) with tenant isolation and category pre-filtering.
+  - Implemented configurable threshold gating (`RAG_MIN_SIMILARITY=0.15`) that immediately returns refusal without calling the LLM when no relevant chunks qualify.
+  - Implemented extractive `MockLlmProvider` synthesizing answers from top-scoring sentences and attaching verifiable `[n]` citations.
+  - Implemented adversarial prompt injection defense with delimited, untrusted context boundary enforcement.
+  - Updated seed script `prisma/seed.ts` to chunk and embed all 8 knowledge documents into 56 vector chunks in PostgreSQL.
+  - Mounted `/api/knowledge` routes with full RBAC (ADMIN/RECRUITER ingest, ADMIN delete, all authenticated users ask/list).
+  - Built Next.js `/knowledge` page with chat-style Q&A, suggested prompts, clickable citation chips with passage modals, and document library management.
+  - Verified with 15 API integration tests and 2 React Testing Library web tests.
 - [ ] Task 15: Ask TalentPulse (conversational analyst, v1 pipeline)
 - [ ] Task 16: Safe text-to-SQL
 - [ ] Task 17: Campaign system & simulation engine

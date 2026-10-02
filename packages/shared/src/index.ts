@@ -347,6 +347,53 @@ export const jobMatchesResponseSchema = z.object({
 export type JobMatchesResponse = z.infer<typeof jobMatchesResponseSchema>;
 
 /**
+ * Knowledge Base Schemas
+ */
+export const createKnowledgeDocumentSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters'),
+  category: z.string().min(1, 'Category is required').default('general'),
+  content: z.string().min(10, 'Content must be at least 10 characters'),
+});
+
+export type CreateKnowledgeDocumentRequest = z.infer<typeof createKnowledgeDocumentSchema>;
+
+export const knowledgeCitationSchema = z.object({
+  n: z.number().int().positive(),
+  documentId: z.string().uuid(),
+  title: z.string(),
+  snippet: z.string(),
+  similarity: z.number(),
+});
+
+export type KnowledgeCitation = z.infer<typeof knowledgeCitationSchema>;
+
+export const askKnowledgeRequestSchema = z.object({
+  question: z.string().min(2, 'Question must be at least 2 characters'),
+  category: z.string().optional(),
+});
+
+export type AskKnowledgeRequest = z.infer<typeof askKnowledgeRequestSchema>;
+
+export const askKnowledgeResponseSchema = z.object({
+  answer: z.string(),
+  citations: z.array(knowledgeCitationSchema),
+});
+
+export type AskKnowledgeResponse = z.infer<typeof askKnowledgeResponseSchema>;
+
+export const knowledgeDocumentItemSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  title: z.string(),
+  category: z.string(),
+  content: z.string().optional(),
+  createdAt: z.string().datetime().or(z.date()),
+  chunkCount: z.number().int().optional(),
+});
+
+export type KnowledgeDocumentItem = z.infer<typeof knowledgeDocumentItemSchema>;
+
+/**
  * Applications Enums and Schemas
  */
 export const ApplicationStatusEnum = z.enum([

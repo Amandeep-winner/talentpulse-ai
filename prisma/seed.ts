@@ -13,6 +13,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { embeddingService } from '../apps/api/src/modules/embeddings/embedding.service';
+import { knowledgeService } from '../apps/api/src/modules/knowledge/knowledge.service';
 
 const prisma = new PrismaClient();
 
@@ -161,6 +162,7 @@ async function main() {
   const knowledgeDir = path.resolve(__dirname, '../data/knowledge');
   if (fs.existsSync(knowledgeDir)) {
     const docFiles = fs.readdirSync(knowledgeDir).filter((f) => f.endsWith('.md'));
+    let totalChunks = 0;
     for (const file of docFiles) {
       const fullPath = path.join(knowledgeDir, file);
       const content = fs.readFileSync(fullPath, 'utf8');
@@ -171,16 +173,15 @@ async function main() {
       else if (file.includes('playbook')) category = 'playbook';
       else if (file.includes('guide')) category = 'guide';
 
-      await prisma.knowledgeDocument.create({
-        data: {
-          organizationId: org.id,
-          title,
-          category,
-          content,
-        },
+      const doc = await knowledgeService.ingestDocument({
+        orgId: org.id,
+        title,
+        category,
+        content,
       });
+      totalChunks += doc.chunkCount;
     }
-    console.log(`Ingested ${docFiles.length} knowledge documents into database.`);
+    console.log(`Ingested ${docFiles.length} knowledge documents (${totalChunks} chunks embedded) into database.`);
   }
 
   // 6. Create 5 Standard Publishers

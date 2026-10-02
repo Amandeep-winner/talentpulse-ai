@@ -193,3 +193,92 @@ export async function knnCandidates(options: {
 
   return prisma.$queryRawUnsafe<CandidateKnnResult[]>(query, ...params);
 }
+
+/**
+ * Inserts a KnowledgeChunk with pgvector embedding
+ */
+export async function insertKnowledgeChunk(
+  documentId: string,
+  orgId: string,
+  idx: number,
+  content: string,
+  embedding: number[]
+): Promise<void> {
+  const vectorStr = toVectorLiteral(embedding);
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "KnowledgeChunk" (id, "documentId", "organizationId", idx, content, embedding)
+     VALUES (gen_random_uuid(), $1::uuid, $2::uuid, $3, $4, $5::vector)`,
+    documentId,
+    orgId,
+    idx,
+    content,
+    vectorStr
+  );
+}
+
+/**
+ * Deletes all KnowledgeChunk rows for a document
+ */
+export async function deleteKnowledgeChunks(documentId: string): Promise<void> {
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM "KnowledgeChunk" WHERE "documentId" = $1::uuid`,
+    documentId
+  );
+}
+
+/**
+ * Knowledge chunk KNN search result
+ */
+export interface KnowledgeChunkKnnResult {
+  chunkId: string;
+  documentId: string;
+  documentTitle: string;
+  category: string;
+  idx: number;
+  content: string;
+  distance: number;
+  similarity: number;
+}
+
+/**
+ * Performs KNN search on KnowledgeChunks using cosine distance (<=>)
+ */
+export async function knnKnowledgeChunks(options: {
+  orgId: string;
+  queryVector: number[];
+  limit?: number;
+  category?: string;
+}): Promise<KnowledgeChunkKnnResult[]> {
+  const { orgId, queryVector, limit = 5, category } = options;
+  const vectorStr = toVectorLiteral(queryVector);
+
+  let query = `
+    SELECT
+      kc.id AS "chunkId",
+      kc."documentId",
+      kd.title AS "documentTitle",
+      kd.category AS "category",
+      kc.idx,
+      kc.content,
+      (kc.embedding <=> $1::vector) AS distance,
+      ROUND((1 - (kc.embedding <=> $1::vector))::numeric, 4)::float AS similarity
+    FROM "KnowledgeChunk" kc
+    JOIN "KnowledgeDocument" kd ON kc."documentId" = kd.id
+    WHERE kc."organizationId" = $2::uuid
+      AND kc.embedding IS NOT NULL
+  `;
+
+  const params: unknown[] = [vectorStr, orgId];
+  let paramIdx = 3;
+
+  if (category) {
+    query += ` AND kd.category = $${paramIdx++}`;
+    params.push(category);
+  }
+
+  query += ` ORDER BY distance ASC LIMIT $${paramIdx}`;
+  params.push(limit);
+
+  return prisma.$queryRawUnsafe<KnowledgeChunkKnnResult[]>(query, ...params);
+}
+
