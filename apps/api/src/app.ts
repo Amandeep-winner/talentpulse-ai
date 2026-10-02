@@ -27,7 +27,9 @@ import { aiRouter } from './modules/ai/ai.routes';
 import { optimizationRoutes } from './modules/optimization';
 import experimentsRoutes from './modules/optimization/experiments/experiments.routes';
 import { mlRouter } from './modules/ml';
+import { forecastRouter } from './modules/forecast';
 import { authenticateKeyOrJwt } from './middleware/auth';
+
 
 // Initialize Prometheus default metrics collection once
 client.collectDefaultMetrics({ prefix: 'talentpulse_' });
@@ -124,6 +126,7 @@ export function createApp(): Express {
   app.use('/api/optimization', optimizationRoutes);
   app.use('/api/experiments', experimentsRoutes);
   app.use('/api/ml', mlRouter);
+  app.use('/api/forecast', forecastRouter);
 
   if (env.NODE_ENV === 'test') {
     app.get('/api/test-key-auth', authenticateKeyOrJwt, (req, res) => {

@@ -98,3 +98,19 @@ def test_full_api_workflow():
         headers=AUTH_HEADERS,
     )
     assert invalid_pred.status_code == 400
+
+    # 8. Forecast endpoint integration
+    forecast_res = client.post(
+        "/forecast",
+        json={
+            "series": [{"date": f"2026-01-{i+1:02d}", "value": 10.0 + i} for i in range(14)],
+            "horizon": 7,
+            "metric": "applications",
+        },
+        headers=AUTH_HEADERS,
+    )
+    assert forecast_res.status_code == 200
+    forecast_data = forecast_res.json()
+    assert forecast_data["method"] == "moving_average"
+    assert len(forecast_data["forecast"]) == 7
+    assert "backtest" in forecast_data

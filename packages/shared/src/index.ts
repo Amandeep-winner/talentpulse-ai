@@ -1157,3 +1157,68 @@ export const mlModelVersionSchema = z.object({
 });
 export type MlModelVersion = z.infer<typeof mlModelVersionSchema>;
 
+/**
+ * Time-Series Forecasting Enums and Schemas (Task 22)
+ */
+export const ForecastMetricEnum = z.enum(['applications', 'interviews', 'hires', 'spend']);
+export type ForecastMetric = z.infer<typeof ForecastMetricEnum>;
+
+export const ForecastHorizonEnum = z.union([
+  z.literal(7),
+  z.literal(14),
+  z.literal(30),
+]);
+export type ForecastHorizon = z.infer<typeof ForecastHorizonEnum>;
+
+export const forecastSeriesPointSchema = z.object({
+  date: z.string(),
+  value: z.number(),
+});
+export type ForecastSeriesPoint = z.infer<typeof forecastSeriesPointSchema>;
+
+export const forecastItemSchema = z.object({
+  date: z.string(),
+  value: z.number(),
+  lower: z.number(),
+  upper: z.number(),
+});
+export type ForecastItem = z.infer<typeof forecastItemSchema>;
+
+export const backtestMetricsSchema = z.object({
+  mae: z.number(),
+  rmse: z.number(),
+  mape: z.number(),
+  baselineMae: z.number(),
+});
+export type BacktestMetrics = z.infer<typeof backtestMetricsSchema>;
+
+export const forecastInsightSchema = z.object({
+  expectedTotalNext7d: z.number(),
+  actualLast7d: z.number(),
+  trendPctVsLast7d: z.number(),
+  shortfallAlert: z.boolean(),
+  targetPace7d: z.number().optional(),
+  message: z.string(),
+});
+export type ForecastInsight = z.infer<typeof forecastInsightSchema>;
+
+export const forecastResponseSchema = z.object({
+  metric: ForecastMetricEnum,
+  horizon: z.number(),
+  campaignId: z.string().optional(),
+  campaignName: z.string().optional(),
+  history: z.array(forecastSeriesPointSchema),
+  forecast: z.array(forecastItemSchema),
+  method: z.string(),
+  backtest: backtestMetricsSchema,
+  insight: forecastInsightSchema,
+  recommendationId: z.string().optional(),
+});
+export type ForecastResponse = z.infer<typeof forecastResponseSchema>;
+
+export const getForecastQuerySchema = z.object({
+  metric: ForecastMetricEnum.default('applications'),
+  horizon: z.coerce.number().pipe(ForecastHorizonEnum).default(7),
+  campaignId: z.string().uuid().optional(),
+});
+export type GetForecastQuery = z.infer<typeof getForecastQuerySchema>;

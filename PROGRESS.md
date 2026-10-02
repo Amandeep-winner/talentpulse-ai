@@ -175,7 +175,22 @@ This document tracks implementation progress across all 34 tasks.
   - Integrated Predictive Intelligence card into Job Detail page (`/jobs/[id]`) showing fill probability, color-coded risk badge, and top contributing factors.
   - Integrated predicted conversion rate column into Campaign Detail page (`/campaigns/[id]`) with ML badges and model version attribution.
   - Verified with 13/13 passing pytest unit/integration tests, 10/10 passing API integration tests in `apps/api/tests/ml.test.ts`, and 3/3 passing frontend tests in `apps/web/tests/ml-intelligence.test.tsx`.
-- [ ] Task 22: Forecasting
+- [x] Task 22: Forecasting
+  - Added `statsmodels>=0.14.0` dependency to `services/ml`.
+  - Built `services/ml/app/models/forecast.py` implementing Holt-Winters Exponential Smoothing with additive trend and weekly seasonality (period=7) when observations >= 28.
+  - Implemented moving-average fallback with empirical standard deviations for series with fewer than 28 data points.
+  - Implemented 14-day rolling-origin holdout backtesting computing MAE, RMSE, MAPE, and seasonal-naive baseline comparison.
+  - Created authenticated FastAPI endpoint `POST /forecast` with 95% confidence intervals and service token security.
+  - Built typed API client methods in `ml.client.ts` with retry backoff and circuit-breaker protection.
+  - Built `forecast.service.ts` generating contiguous 35-day zero-filled time series via SQL queries.
+  - Implemented deterministic insights computing expected 7-day volume, trend % vs prior period, and campaign target pacing derived from budget and CPA benchmark.
+  - Implemented proactive shortfall alerting automatically creating `Recommendation(type: 'FORECAST_ALERT')` when pacing drops below target.
+  - Implemented 5-minute versioned Redis caching and in-process moving average fallback (`fallback_moving_average`) when the ML service is down.
+  - Mounted authenticated route `GET /api/forecast` under `apps/api/src/app.ts`.
+  - Built Next.js `/forecast` page with Recharts confidence bands, KPI summary cards, pacing shortfall alert banner with link to `/optimize`, and backtest metrics validation table.
+  - Verified with 4 pytest unit/integration tests in `services/ml/tests/test_forecast.py` (17/17 passing across ML service).
+  - Verified with 10 API unit/integration tests in `apps/api/tests/forecast.test.ts` (242/242 passing across API).
+  - Verified with 4 RTL tests in `apps/web/tests/forecast.test.tsx` (46/46 passing across Web).
 - [ ] Task 23: Mock ATS
 - [ ] Task 24: Webhook receiver & integration
 - [ ] Task 25: Multi-agent architecture
@@ -209,7 +224,8 @@ This document tracks implementation progress across all 34 tasks.
 - [x] Optimizer (rules + scoring + constrained allocation) with approve/reject flow
 - [x] Bandit lab (LinUCB, epsilon-greedy, baselines) + A/B experiments with significance test
 - [x] ML predictions (application/fill probability, risk) with evaluation metrics
-- [ ] Forecasting with backtest metrics and shortfall alerts
+- [x] Forecasting with backtest metrics and shortfall alerts
+
 - [ ] Mock ATS + signed webhooks + retries + dead-letter + replay
 - [ ] Multi-agent supervisor with controlled tools and logged tool traces
 - [ ] Audit trail UI + reproducibility replay + fairness monitor

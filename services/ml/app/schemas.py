@@ -93,3 +93,30 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     version: str
+
+# Forecasting schemas (Task 22)
+class ForecastSeriesPoint(BaseModel):
+    date: str
+    value: float
+
+class ForecastRequest(BaseModel):
+    series: List[ForecastSeriesPoint] = Field(..., description="Historical time-series observations")
+    horizon: int = Field(default=7, ge=1, le=90, description="Forecast horizon in days")
+    metric: str = Field(default="applications", description="Target metric name")
+
+class ForecastItem(BaseModel):
+    date: str
+    value: float
+    lower: float
+    upper: float
+
+class BacktestMetrics(BaseModel):
+    mae: float
+    rmse: float
+    mape: float
+    baselineMae: float
+
+class ForecastResponse(BaseModel):
+    forecast: List[ForecastItem]
+    method: str
+    backtest: BacktestMetrics

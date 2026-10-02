@@ -6,6 +6,7 @@ from app.routes.health import router as health_router
 from app.routes.models import router as models_router
 from app.routes.train import router as train_router
 from app.routes.predict import router as predict_router
+from app.routes.forecast import router as forecast_router
 from app.seed import bootstrap_initial_models
 
 @asynccontextmanager
@@ -36,6 +37,7 @@ app.include_router(health_router)
 app.include_router(models_router)
 app.include_router(train_router)
 app.include_router(predict_router)
+app.include_router(forecast_router)
 
 if __name__ == "__main__":
     import uvicorn

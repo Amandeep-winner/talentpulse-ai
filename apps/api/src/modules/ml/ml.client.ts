@@ -231,6 +231,27 @@ export class MlClient {
       body: features,
     });
   }
+
+  public async forecast(req: {
+    series: Array<{ date: string; value: number }>;
+    horizon: number;
+    metric: string;
+  }): Promise<{
+    forecast: Array<{ date: string; value: number; lower: number; upper: number }>;
+    method: string;
+    backtest: {
+      mae: number;
+      rmse: number;
+      mape: number;
+      baselineMae: number;
+    };
+  }> {
+    return this.request('/forecast', {
+      method: 'POST',
+      body: req,
+    });
+  }
 }
+
 
 export const mlClient = new MlClient();
