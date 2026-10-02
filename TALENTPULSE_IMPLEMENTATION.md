@@ -975,8 +975,27 @@ Tests (pytest + jest): seasonality captured on synthetic weekly series, MAE < na
 **Gate:** verify + pytest green.
 **Commit:** `feat(forecast): hiring and spend forecasting with backtesting and shortfall alerts`
 
-### TASK 23 — Mock ATS
+---
+
+### Accelerated Milestone Execution Protocol (Tasks 23 - 34)
+
+To reduce development time while maintaining 100% test coverage and strict architectural standards, remaining tasks are executed in 5 paired milestone batches:
+- Targeted testing during active implementation (module-specific unit and integration tests).
+- Shared domain modeling and end-to-end integration tests across paired components.
+- Monorepo regression gates (`pytest`, `npm run lint`, `npm run typecheck`, full `npm test`, `npm run build`) run at milestone completion boundaries.
+
+#### Milestone Batches:
+- **Milestone 1 (ATS Ecosystem):** Task 23 (Mock ATS Service) + Task 24 (Webhook Receiver & ATS Integration).
+- **Milestone 2 (Intelligence & Ethics):** Task 25 (Multi-Agent Architecture) + Task 26 (Responsible AI & Audit Trail).
+- **Milestone 3 (Reliability & Observability):** Task 27 (Redis Caching Consolidation) + Task 28 (BullMQ Background Workers) + Task 30 (Observability & Metrics).
+- **Milestone 4 (Hardening & Delivery):** Task 29 (Test Hardening & Coverage Gates) + Task 31 (CI/CD Pipeline) + Task 32 (Production Deployment Readiness).
+- **Milestone 5 (Documentation & Demonstration):** Task 33 (Comprehensive Documentation & ADRs) + Task 34 (Demo Script, Interview Preparation & Harness).
+
+---
+
+### TASK 23 - Mock ATS
 **Build:** `apps/mock-ats` (Express + TS, in-memory store seeded with ~25 candidates/applications, persisted optionally to JSON):
+
 - **OAuth2 client-credentials:** `POST /oauth/token` (`grant_type=client_credentials`, client id/secret) → short-lived JWT (10 min). Resource API requires Bearer; also supports `x-api-key` for comparison.
 - REST: `GET/POST /v1/candidates`, `GET /v1/candidates/:id`, `GET/POST /v1/applications`, `PATCH /v1/applications/:id`, `POST /v1/interviews`.
 - **Webhooks:** `POST /v1/webhooks` (register `{url, secret, events[]}`); dispatcher sends events `candidate.created, candidate.updated, application.created, interview.scheduled, candidate.hired` with envelope `{ id, type, createdAt, data }`. Headers: `X-ATS-Event-Id`, `X-ATS-Timestamp`, `X-ATS-Signature: sha256=<hex(HMAC_SHA256(secret, `${timestamp}.${rawBody}`))>`. Delivery retries (3 attempts, exponential backoff) on non-2xx.

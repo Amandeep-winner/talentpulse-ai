@@ -191,18 +191,30 @@ This document tracks implementation progress across all 34 tasks.
   - Verified with 4 pytest unit/integration tests in `services/ml/tests/test_forecast.py` (17/17 passing across ML service).
   - Verified with 10 API unit/integration tests in `apps/api/tests/forecast.test.ts` (242/242 passing across API).
   - Verified with 4 RTL tests in `apps/web/tests/forecast.test.tsx` (46/46 passing across Web).
-- [ ] Task 23: Mock ATS
-- [ ] Task 24: Webhook receiver & integration
-- [ ] Task 25: Multi-agent architecture
-- [ ] Task 26: Responsible AI
-- [ ] Task 27: Redis caching consolidation
-- [ ] Task 28: Background workers consolidation
-- [ ] Task 29: Testing hardening
-- [ ] Task 30: Observability
-- [ ] Task 31: CI/CD
-- [ ] Task 32: Deployment readiness
-- [ ] Task 33: Documentation
-- [ ] Task 34: Demo & interview preparation
+### Accelerated Milestone Execution Plan (Tasks 23 - 34)
+
+#### Milestone 1: ATS Integration Ecosystem
+- [ ] Task 23: Mock ATS service (`apps/mock-ats`, OAuth2, REST endpoints, signed webhooks, chaos controls)
+- [ ] Task 24: Webhook receiver & ATS integration (idempotent receiver, dead-letter, retries, replay, `/integrations` UI)
+
+#### Milestone 2: Multi-Agent Intelligence & Responsible AI
+- [ ] Task 25: Multi-agent architecture (supervisor + 4 specialist agents with controlled tool registry)
+- [ ] Task 26: Responsible AI (protected attributes, resume scrubber, audit replay, fairness monitoring)
+
+#### Milestone 3: Platform Reliability, Workers & Observability
+- [ ] Task 27: Redis caching consolidation (versioned invalidation, cache metrics, fallback)
+- [ ] Task 28: Background workers consolidation (BullMQ processors for all queues, report generator)
+- [ ] Task 30: Observability (request tracing, structured logs, Prometheus `/metrics`, system status page)
+
+#### Milestone 4: Production Hardening, CI/CD & Deployment
+- [ ] Task 29: Testing hardening (coverage gates: API >= 75% overall, >= 90% core modules)
+- [ ] Task 31: CI/CD pipeline (GitHub Actions multi-job workflow, dependabot, PR template)
+- [ ] Task 32: Deployment readiness (`docker-compose.prod.yml`, Caddy reverse proxy, production hardening, backup script)
+
+#### Milestone 5: Documentation & Demonstration
+- [ ] Task 33: Comprehensive documentation (README, architecture, API reference, AI/optimization docs, 10 ADRs)
+- [ ] Task 34: Demo script, interview preparation (>=30 Q&As) & one-command demo harness (`scripts/demo.sh`)
+
 
 ## Final Acceptance Checklist
 
