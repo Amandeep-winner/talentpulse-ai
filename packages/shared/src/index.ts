@@ -437,9 +437,28 @@ export const aiQueryResponseSchema = z.object({
   recommendations: z.array(z.string()).optional(),
   citations: z.array(knowledgeCitationSchema).optional(),
   confidence: z.number().min(0).max(1),
+  executionTimeMs: z.number().optional(),
+  rowCount: z.number().optional(),
 });
 
 export type AiQueryResponse = z.infer<typeof aiQueryResponseSchema>;
+
+export const sqlPreviewRequestSchema = z.object({
+  sql: z.string().min(1, 'SQL query cannot be empty'),
+});
+
+export type SqlPreviewRequest = z.infer<typeof sqlPreviewRequestSchema>;
+
+export const sqlPreviewResponseSchema = z.object({
+  valid: z.boolean(),
+  sql: z.string().optional(),
+  reason: z.string().optional(),
+  tables: z.array(z.string()).optional(),
+  executionTimeMs: z.number().optional(),
+  rowCount: z.number().optional(),
+});
+
+export type SqlPreviewResponse = z.infer<typeof sqlPreviewResponseSchema>;
 
 export const aiConversationItemSchema = z.object({
   id: z.string().uuid(),

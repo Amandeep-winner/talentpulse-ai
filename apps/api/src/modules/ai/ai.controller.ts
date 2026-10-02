@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { aiService } from './ai.service';
-import { aiQueryRequestSchema } from '@talentpulse/shared';
+import { aiQueryRequestSchema, sqlPreviewRequestSchema } from '@talentpulse/shared';
 
 export class AiController {
   async query(req: Request, res: Response) {
@@ -13,6 +13,13 @@ export class AiController {
       conversationId: validated.conversationId,
     });
 
+    res.json({ data: result });
+  }
+
+  async previewSql(req: Request, res: Response) {
+    const orgId = req.user!.organizationId;
+    const validated = sqlPreviewRequestSchema.parse(req.body);
+    const result = await aiService.previewSql(orgId, validated.sql);
     res.json({ data: result });
   }
 

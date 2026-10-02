@@ -111,6 +111,8 @@ export async function runAiPipeline(ctx: AiPipelineContext): Promise<AiPipelineO
   let recommendations: string[] | undefined;
   let citations: KnowledgeCitation[] | undefined;
   let confidence = 0.9;
+  let executionTimeMs: number | undefined;
+  let rowCount: number | undefined;
 
   // 4. Step 2: Route Execution
   switch (intent) {
@@ -163,17 +165,22 @@ The primary driver behind this decline is **${diag.primaryDriver.publisherName}*
     }
 
     case 'analytics_sql': {
-      steps.push('Synthesizing and executing analytical aggregation query');
+      steps.push('Synthesizing SQL query from schema context and templates');
       const sqlResult = await recordTool('sql_engine', 'execute_sql', { question }, () =>
         executeAnalyticalQuery(organizationId, question)
       );
 
-      steps.push('Formulated results and generated visual chart breakdown');
+      steps.push(
+        `Validated AST, enforced tenant isolation, and executed in ${sqlResult.executionTimeMs ?? 0}ms (${sqlResult.rowCount ?? sqlResult.rows.length} rows)`
+      );
       answer = sqlResult.answer;
       sql = sqlResult.sql;
       rows = sqlResult.rows;
       chart = sqlResult.chart;
-      confidence = 0.92;
+      recommendations = sqlResult.recommendations;
+      confidence = sqlResult.confidence ?? 0.94;
+      executionTimeMs = sqlResult.executionTimeMs;
+      rowCount = sqlResult.rowCount ?? sqlResult.rows.length;
       break;
     }
 
@@ -214,6 +221,8 @@ The primary driver behind this decline is **${diag.primaryDriver.publisherName}*
     recommendations,
     citations,
     confidence,
+    executionTimeMs,
+    rowCount,
   };
 
   const assistantMessage = await prisma.aiMessage.create({
@@ -245,5 +254,7 @@ The primary driver behind this decline is **${diag.primaryDriver.publisherName}*
     recommendations,
     citations,
     confidence,
+    executionTimeMs,
+    rowCount,
   };
 }

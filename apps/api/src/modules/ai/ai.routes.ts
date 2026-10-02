@@ -26,6 +26,10 @@ router.post('/query', aiLimiter, (req, res, next) => {
   aiController.query(req, res).catch(next);
 });
 
+router.post('/sql/preview', (req, res, next) => {
+  aiController.previewSql(req, res).catch(next);
+});
+
 router.get('/conversations', (req, res, next) => {
   aiController.listConversations(req, res).catch(next);
 });

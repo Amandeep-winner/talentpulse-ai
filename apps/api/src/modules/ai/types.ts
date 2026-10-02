@@ -55,4 +55,6 @@ export interface AiPipelineOutput {
   recommendations?: string[];
   citations?: KnowledgeCitation[];
   confidence: number;
+  executionTimeMs?: number;
+  rowCount?: number;
 }

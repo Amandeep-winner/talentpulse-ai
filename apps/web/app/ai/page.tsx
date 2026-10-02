@@ -197,11 +197,34 @@ export default function AiAnalystPage() {
         },
       ]);
     } catch (err: unknown) {
-      addToast({
-        title: 'Query failed',
-        description: err instanceof Error ? err.message : 'AI Analyst query error',
-        variant: 'danger',
-      });
+      const apiErr = err as { response?: { data?: { error?: { message?: string; code?: string } } } };
+      const errorMsg =
+        apiErr?.response?.data?.error?.message ||
+        (err instanceof Error ? err.message : 'AI Analyst query error');
+      const errorCode = apiErr?.response?.data?.error?.code;
+
+      if (
+        errorCode === 'SQL_REJECTED' ||
+        errorMsg.includes('SQL_REJECTED') ||
+        errorMsg.includes('guardrails') ||
+        errorMsg.includes('forbidden') ||
+        errorMsg.includes('not permitted')
+      ) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            role: 'assistant',
+            content: `🛡️ **Query Refused by Security Guardrails**\n\n${errorMsg}\n\n*Note: TalentPulse enforces AST parsing, tenant isolation, and strict view allowlisting. You can query:*\n- \`v_job_funnel_daily\` (Funnel conversions & spend)\n- \`v_publisher_performance_daily\` (Publisher CPA, CTR, CPC)\n- \`v_campaign_summary\` (Campaign budgets & hires)\n- \`v_applications_overview\` (Sourcing & stages)\n- \`v_jobs_overview\` (Job requisitions & skills)`,
+          },
+        ]);
+      } else {
+        addToast({
+          title: 'Query failed',
+          description: errorMsg,
+          variant: 'danger',
+        });
+      }
     } finally {
       setIsQuerying(false);
     }
@@ -463,11 +486,22 @@ export default function AiAnalystPage() {
 
                         {/* Executed SQL Box */}
                         {p.sql && sections.sql && (
-                          <div className="bg-gray-950 p-3 rounded-lg border border-gray-800 space-y-1">
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">
-                              Executed SQL Query
+                          <div className="bg-gray-950 p-3 rounded-lg border border-gray-800 space-y-2">
+                            <div className="flex items-center justify-between text-[10px] font-mono">
+                              <span className="flex items-center gap-1.5 text-blue-400 uppercase tracking-wider font-semibold">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                Validated SQL (AST Guarded)
+                              </span>
+                              <div className="flex items-center gap-3 text-gray-400">
+                                {p.executionTimeMs !== undefined && (
+                                  <span>Time: {p.executionTimeMs}ms</span>
+                                )}
+                                {p.rowCount !== undefined && (
+                                  <span>Rows: {p.rowCount}</span>
+                                )}
+                              </div>
                             </div>
-                            <pre className="text-[11px] font-mono text-emerald-400 overflow-x-auto whitespace-pre">
+                            <pre className="text-[11px] font-mono text-emerald-400 overflow-x-auto whitespace-pre p-2 bg-black/40 rounded border border-gray-800/60">
                               {p.sql}
                             </pre>
                           </div>

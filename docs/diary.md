@@ -352,7 +352,45 @@ Verified with 11 Supertest and Prisma integration tests validating all intent ro
 Verified with React Testing Library tests confirming query submission, diagnosis answer rendering, recommendation cards, confidence badges, and pipeline trace toggling.
 Full monorepo verification gate passed with 0 lint errors, 0 type errors, 170/170 passing tests across 29 test suites, and clean Next.js production builds.
 
+---
 
+## Task 16 - Guarded Text-to-SQL with AST Validation, Dedicated Read-Only Role, and Tenant Isolation
 
+### Problem
+Enabling natural language questions to query relational database tables introduces severe security, stability, and privacy risks.
+Unconstrained text-to-SQL generation is vulnerable to prompt injection attacks attempting to execute destructive DML or DDL (`DROP TABLE`, `UPDATE`, `INSERT`).
+Malicious or malformed prompts can attempt to smuggle multi-statement semicolon chains, comments, or administrative PostgreSQL catalog functions (`pg_sleep`, `pg_read_file`, `set_config`, `lo_import`).
+Furthermore, multi-tenant recruitment systems must ensure that one organization can never access another organization's candidate or campaign records.
+Exposing raw candidate tables (`Candidate`, `Application`, `User`) directly to text-to-SQL can leak sensitive Personally Identifiable Information (PII) such as candidate names, phone numbers, and emails.
+Finally, unoptimized queries can cause denial-of-service without strict execution timeouts and row limit caps.
 
+### Decision
+Implement an end-to-end multi-layer defense-in-depth architecture for all text-to-SQL generation and execution.
+First, restrict all text-to-SQL access exclusively to 5 whitelisted analytical views (`v_job_funnel_daily`, `v_publisher_performance_daily`, `v_campaign_summary`, `v_applications_overview`, `v_jobs_overview`).
+Ensure `v_applications_overview` is strictly privacy-safe by omitting candidate names and emails.
+Second, build a strict AST SQL validator (`modules/ai/sql/validator.ts`) using `node-sql-parser` configured for PostgreSQL dialect.
+Enforce single-statement verification, allow only `select` queries (including CTEs where each statement is a `select`), enforce a 2,000-character length limit, and strictly reject comments (`--`, `/* */`) and semicolon chaining (`;`).
+Enforce a blocklist of forbidden keywords (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `CREATE`, `GRANT`, `REVOKE`, `COPY`, `CALL`, `DO`, `EXECUTE`, `SET`, `RESET`, `VACUUM`) and functions (`pg_sleep`, `pg_read_file`, `lo_import`, `dblink`, `set_config`, `current_setting`).
+Extract all referenced tables from the query AST and verify they exist strictly in the view allowlist or active CTE declarations, rejecting any schema-qualified names (`public.*`) or catalog tables (`pg_*`, `information_schema.*`).
+Enforce automatic `LIMIT` injection (injecting `LIMIT 100` if absent, or clamping explicit limits > 500 down to 500).
+Third, execute all queries through a dedicated read-only connection pool using the `tp_readonly` role with zero base table permissions.
+Fourth, execute each query inside an isolated transaction that applies `SET LOCAL statement_timeout = '5000'` and database-enforced tenant isolation via `SELECT set_config('app.org_id', $1, true)`.
+Fifth, implement a mock template library covering >= 12 question patterns (lowest/highest CPA by publisher, applications by week, hires by campaign, spend by publisher last 30 days, CTR by campaign, funnel counts per job, interview rate by publisher, cost per hire ranking, top campaigns by qualified applications, jobs by status, applications by source, month-over-month applications).
+Sixth, build a result analyzer (`modules/ai/sql/analyzer.ts`) producing executive natural language answers, recommendations, and Recharts visualization specs.
+Seventh, expose `POST /api/ai/sql/preview` for query validation dry-runs and integrate execution time and row counts into the `/ai` chat UI with security refusal alerts.
 
+### Alternative
+Allow direct raw SQL execution using the primary application Prisma pool, or rely solely on LLM prompt engineering without AST parsing.
+
+### Why
+Prompt engineering alone cannot prevent jailbreaks, prompt injection, or SQL hallucination.
+AST parsing with `node-sql-parser` inspects the true structural syntax tree of the query, catching disguised keywords, subqueries, and non-whitelisted tables before execution.
+A dedicated read-only database role (`tp_readonly`) ensures that even if an invalid query bypassed application checks, PostgreSQL permissions would prevent any data mutations.
+Database-level tenant isolation via `set_config('app.org_id', $1, true)` guarantees multi-tenant boundaries at the database kernel level.
+Statement timeouts prevent runaway cross-joins and unindexed aggregations from degrading API performance.
+
+### Result
+Verified with 26 comprehensive unit, integration, and security tests in `apps/api/tests/sql.test.ts`.
+Tests confirm AST validation across all 5 views, LIMIT injection, LIMIT clamping, rejection of DML/DDL/admin keywords, rejection of forbidden functions and comments, rejection of hallucinated tables with `SQL_REJECTED`, preview endpoint validation, read-only role enforcement, statement timeout abortion, and strict tenant isolation across two independent organizations over both direct execution and HTTP API.
+Verified with React Testing Library tests in `apps/web/tests/ai-analyst.test.tsx` confirming validated SQL rendering with execution time and row count badges, and security refusal card display upon guardrail triggers.
+Monorepo verification gate passed with 0 lint errors, 0 type errors, 198/198 passing tests across 30 test suites, and clean Next.js production builds.

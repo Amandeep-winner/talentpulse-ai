@@ -107,4 +107,85 @@ describe('Ask TalentPulse AI Conversational Analyst UI (Task 15)', () => {
     expect(screen.getByText('Pipeline Execution Trace')).toBeInTheDocument();
     expect(screen.getByText('Classified intent as "metric_diagnosis"')).toBeInTheDocument();
   });
+
+  it('renders Text-to-SQL response with validated SQL, execution time, and row count (Task 16)', async () => {
+    const user = userEvent.setup();
+
+    jest.spyOn(api, 'get').mockResolvedValue({
+      data: mockConversations,
+    });
+
+    const mockSqlResponse = {
+      conversationId: 'conv-1111-uuid',
+      messageId: 'msg-sql-3333',
+      answer: 'JobBoard Prime has the lowest Cost Per Acquisition (CPA) at ₹100.00.',
+      intent: 'analytics_sql',
+      steps: ['Classified intent as "analytics_sql"', 'Validated AST and executed in 12ms (5 rows)'],
+      sql: 'SELECT publisher_name, cpa FROM v_publisher_performance_daily ORDER BY cpa ASC LIMIT 10;',
+      executionTimeMs: 12,
+      rowCount: 5,
+      confidence: 0.96,
+      recommendations: ['Increase allocation to JobBoard Prime'],
+    };
+
+    jest.spyOn(api, 'post').mockResolvedValue({
+      data: mockSqlResponse,
+    });
+
+    render(<AiAnalystPage />);
+
+    const input = screen.getByTestId('ai-question-input');
+    await user.type(input, 'Which publisher has the lowest CPA?');
+
+    const sendBtn = screen.getByTestId('ai-send-button');
+    await user.click(sendBtn);
+
+    expect(await screen.findByText(/JobBoard Prime has the lowest Cost Per Acquisition/i)).toBeInTheDocument();
+
+    // Toggle SQL view
+    const sqlBtn = screen.getByTestId('toggle-sql-msg-sql-3333');
+    await user.click(sqlBtn);
+
+    expect(screen.getByText('Validated SQL (AST Guarded)')).toBeInTheDocument();
+    expect(screen.getByText('Time: 12ms')).toBeInTheDocument();
+    expect(screen.getByText('Rows: 5')).toBeInTheDocument();
+    expect(screen.getByText(/SELECT publisher_name, cpa FROM v_publisher_performance_daily/i)).toBeInTheDocument();
+  });
+
+  it('renders security refusal message when query triggers SQL safety guardrails', async () => {
+    const user = userEvent.setup();
+
+    jest.spyOn(api, 'get').mockResolvedValue({
+      data: mockConversations,
+    });
+
+    const rejectError = Object.assign(
+      new Error('Statement type or keyword DROP is strictly forbidden.'),
+      {
+        response: {
+          data: {
+            error: {
+              code: 'SQL_REJECTED',
+              message: 'Statement type or keyword DROP is strictly forbidden.',
+            },
+          },
+        },
+      }
+    );
+
+    jest.spyOn(api, 'post').mockRejectedValue(rejectError);
+
+    render(<AiAnalystPage />);
+
+    const input = screen.getByTestId('ai-question-input');
+    await user.type(input, 'DROP TABLE Job');
+
+    const sendBtn = screen.getByTestId('ai-send-button');
+    await user.click(sendBtn);
+
+    expect(await screen.findByText(/Query Refused by Security Guardrails/i)).toBeInTheDocument();
+    expect(screen.getByText(/Statement type or keyword DROP is strictly forbidden/i)).toBeInTheDocument();
+    expect(screen.getByText(/v_publisher_performance_daily/i)).toBeInTheDocument();
+  });
 });
+

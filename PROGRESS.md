@@ -115,7 +115,17 @@ This document tracks implementation progress across all 34 tasks.
   - Mounted `/api/ai` endpoints with rate limiting, conversation history, and deletion.
   - Built Next.js `/ai` chat UI with suggestion chips, expandable SQL viewer, interactive Recharts charts, recommendations, and execution traces.
   - Verified with 11 API integration tests and 1 React Testing Library web test.
-- [ ] Task 16: Safe text-to-SQL
+- [x] Task 16: Safe text-to-SQL
+  - Whitelisted 5 privacy-safe analytical views (`v_job_funnel_daily`, `v_publisher_performance_daily`, `v_campaign_summary`, `v_applications_overview`, `v_jobs_overview`) with candidate PII strictly excluded.
+  - Built strict AST SQL validator (`modules/ai/sql/validator.ts`) using `node-sql-parser` enforcing single-statement SELECT, CTE checks, forbidden keywords/functions, table allowlist, comments/semicolons blocking, and 2,000-character cap.
+  - Implemented automated LIMIT injection (`LIMIT 100`) and explicit limit clamping (<= 500).
+  - Configured dedicated read-only PostgreSQL role (`tp_readonly`) with zero base table permissions.
+  - Enforced session-scoped tenant isolation via `SELECT set_config('app.org_id', $1, true)` and 5,000ms statement timeout.
+  - Implemented mock template library covering 13 domain question patterns with Recharts visual charts and actionable recommendations.
+  - Exposed query preview endpoint `POST /api/ai/sql/preview` for dry-run validation.
+  - Enhanced Next.js `/ai` chat UI with validated SQL display, execution time (ms), row count, and friendly security refusal alerts on guardrail trigger.
+  - Authored Architectural Decision Record `ADR-006-text-to-sql-safety.md`.
+  - Verified with 26 API tests in `tests/sql.test.ts` and 2 web tests in `tests/ai-analyst.test.tsx` (total 198/198 tests passing).
 - [ ] Task 17: Campaign system & simulation engine
 - [ ] Task 18: Campaign analytics
 - [ ] Task 19: Optimization engine (deterministic -> scored -> allocation)
@@ -143,15 +153,15 @@ This document tracks implementation progress across all 34 tasks.
 - [ ] `npm run verify` green; `pytest` green; coverage gates met
 
 ### Product
-- [ ] Register/login/refresh/logout with RBAC across 3 roles; tenant isolation proven by tests
-- [ ] Jobs, candidates, applications, campaigns, publishers CRUD (API + UI)
-- [ ] Idempotent event ingestion (single + batch + concurrent duplicate test)
+- [x] Register/login/refresh/logout with RBAC across 3 roles; tenant isolation proven by tests
+- [x] Jobs, candidates, applications, campaigns, publishers CRUD (API + UI)
+- [x] Idempotent event ingestion (single + batch + concurrent duplicate test)
 - [x] Dashboard + analytics with CTR/app rate/CPC/CPA/CPH, funnel, time series, publisher/campaign comparisons
-- [ ] Embeddings + semantic candidate search (pgvector)
-- [ ] Hybrid ranking with reasons, gaps, confidence, audit record
-- [ ] RAG with citations and safe empty-retrieval behavior
-- [ ] Ask TalentPulse: diagnosis, SQL view, chart, recommendations
-- [ ] Text-to-SQL guarded by AST validation, read-only role, tenant GUC, timeout
+- [x] Embeddings + semantic candidate search (pgvector)
+- [x] Hybrid ranking with reasons, gaps, confidence, audit record
+- [x] RAG with citations and safe empty-retrieval behavior
+- [x] Ask TalentPulse: diagnosis, SQL view, chart, recommendations
+- [x] Text-to-SQL guarded by AST validation, read-only role, tenant GUC, timeout
 - [ ] Optimizer (rules + scoring + constrained allocation) with approve/reject flow
 - [ ] Bandit lab (LinUCB, epsilon-greedy, baselines) + A/B experiments with significance test
 - [ ] ML predictions (application/fill probability, risk) with evaluation metrics
