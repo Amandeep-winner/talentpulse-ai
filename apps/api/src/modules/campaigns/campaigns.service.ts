@@ -22,6 +22,9 @@ type CampaignWithRelations = Prisma.CampaignGetPayload<{
         id: true;
         title: true;
         location: true;
+        category: true;
+        minExperienceYears: true;
+        remote: true;
       };
     };
     publishers: {
@@ -48,6 +51,9 @@ function mapCampaignToItem(c: CampaignWithRelations): CampaignItem {
           id: c.job.id,
           title: c.job.title,
           location: c.job.location,
+          category: c.job.category,
+          minExperienceYears: c.job.minExperienceYears,
+          remote: c.job.remote,
         }
       : undefined,
     publishers: c.publishers?.map((cp) => ({
@@ -110,6 +116,9 @@ export class CampaignsService {
               id: true,
               title: true,
               location: true,
+              category: true,
+              minExperienceYears: true,
+              remote: true,
             },
           },
           publishers: {
@@ -141,6 +150,9 @@ export class CampaignsService {
             id: true,
             title: true,
             location: true,
+            category: true,
+            minExperienceYears: true,
+            remote: true,
           },
         },
         publishers: {
@@ -221,6 +233,9 @@ export class CampaignsService {
               id: true,
               title: true,
               location: true,
+              category: true,
+              minExperienceYears: true,
+              remote: true,
             },
           },
           publishers: {
@@ -264,6 +279,9 @@ export class CampaignsService {
             id: true,
             title: true,
             location: true,
+            category: true,
+            minExperienceYears: true,
+            remote: true,
           },
         },
         publishers: {

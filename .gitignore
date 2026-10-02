@@ -44,6 +44,7 @@ Thumbs.db
 # Docker volumes & data
 data/synthetic/*
 !data/synthetic/README.md
+apps/api/data/
 data/reports/*
 !data/reports/README.md
 

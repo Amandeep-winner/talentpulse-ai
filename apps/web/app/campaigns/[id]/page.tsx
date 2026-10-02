@@ -10,6 +10,7 @@ import {
   PublisherItem,
   PublisherPerformance,
   CampaignSimulateResponse,
+  PredictApplicationResponse,
 } from '@talentpulse/shared';
 import {
   PieChart,
@@ -41,6 +42,7 @@ import {
   ArrowDownRight,
   Award,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -122,6 +124,51 @@ export default function CampaignDetailPage() {
 
   const canManage = user?.role === 'ADMIN' || user?.role === 'RECRUITER';
 
+  // Predictive Intelligence State (Task 21)
+  const [predictedConvs, setPredictedConvs] = React.useState<Record<string, PredictApplicationResponse>>({});
+  const [isPredictingApp, setIsPredictingApp] = React.useState(false);
+
+  const fetchApplicationPredictions = React.useCallback(async (camp: CampaignItem) => {
+    if (!camp?.publishers || camp.publishers.length === 0) return;
+    setIsPredictingApp(true);
+    try {
+      const jobCat = camp.job?.category || 'ENGINEERING';
+      const expReq = camp.job?.minExperienceYears ?? 3;
+      const locTier = camp.job?.remote ? 'remote' : 'tier_1';
+      const dayOfWeek = new Date().getDay();
+
+      const predictions: Record<string, PredictApplicationResponse> = {};
+
+      await Promise.all(
+        camp.publishers.map(async (cp) => {
+          try {
+            const res = await api.post<{ data: PredictApplicationResponse }>('/api/ml/predict/application', {
+              jobCategory: jobCat,
+              experienceReq: expReq,
+              locationTier: locTier,
+              publisherType: cp.publisher?.type?.toLowerCase() || 'job_board',
+              historicalCtr: 0.045,
+              historicalCpa: 120.0,
+              historicalConv: 0.15,
+              dayOfWeek,
+              bid: Number(cp.bidCpc) || 20,
+              budget: Number(cp.dailyBudget) || Number(camp.budget) || 1000,
+            });
+            predictions[cp.publisherId] = res.data;
+          } catch {
+            // Graceful fallback
+          }
+        })
+      );
+
+      setPredictedConvs(predictions);
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsPredictingApp(false);
+    }
+  }, []);
+
   const fetchCampaign = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -131,13 +178,14 @@ export default function CampaignDetailPage() {
       ]);
       setCampaign(campRes.data);
       setPublishers(pubRes.data);
+      fetchApplicationPredictions(campRes.data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load campaign';
       addToast({ title: 'Error', description: msg, variant: 'danger' });
     } finally {
       setIsLoading(false);
     }
-  }, [campaignId, addToast]);
+  }, [campaignId, addToast, fetchApplicationPredictions]);
 
   const fetchPublisherAnalytics = React.useCallback(async () => {
     if (!campaignId) return;
@@ -521,44 +569,81 @@ export default function CampaignDetailPage() {
                     <TableHead className="text-gray-400 text-right">Allocation (%)</TableHead>
                     <TableHead className="text-gray-400 text-right">Bid CPC (₹)</TableHead>
                     <TableHead className="text-gray-400 text-right">Daily Limit (₹)</TableHead>
+                    <TableHead className="text-gray-400 text-right">
+                      <span className="inline-flex items-center gap-1 justify-end">
+                        <Sparkles className="h-3 w-3 text-purple-400" />
+                        Pred. Conv
+                      </span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(campaign.publishers || []).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-gray-500 text-xs">
+                      <TableCell colSpan={6} className="text-center py-6 text-gray-500 text-xs">
                         No publisher channels mapped. Click &apos;Edit Allocations&apos; to configure.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    (campaign.publishers || []).map((cp: CampaignPublisherItem, idx: number) => (
-                      <TableRow key={cp.id} className="border-gray-800/60">
-                        <TableCell className="font-medium text-white flex items-center gap-2">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
-                          />
-                          {cp.publisher?.name || 'Publisher'}
-                        </TableCell>
-                        <TableCell className="text-xs text-gray-400">
-                          <Badge variant="outline" className="text-[10px]">
-                            {cp.publisher?.type || 'CHANNEL'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-medium text-blue-400">
-                          {Number(cp.allocationPct).toFixed(1)}%
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-gray-200">
-                          ₹{Number(cp.bidCpc).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-emerald-400">
-                          ₹{Number(cp.dailyBudget).toLocaleString()}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    (campaign.publishers || []).map((cp: CampaignPublisherItem, idx: number) => {
+                      const pred = predictedConvs[cp.publisherId];
+                      return (
+                        <TableRow key={cp.id} className="border-gray-800/60">
+                          <TableCell className="font-medium text-white flex items-center gap-2">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length] }}
+                            />
+                            {cp.publisher?.name || 'Publisher'}
+                          </TableCell>
+                          <TableCell className="text-xs text-gray-400">
+                            <Badge variant="outline" className="text-[10px]">
+                              {cp.publisher?.type || 'CHANNEL'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-medium text-blue-400">
+                            {Number(cp.allocationPct).toFixed(1)}%
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-gray-200">
+                            ₹{Number(cp.bidCpc).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-emerald-400">
+                            ₹{Number(cp.dailyBudget).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {isPredictingApp ? (
+                              <Skeleton className="h-4 w-12 ml-auto" />
+                            ) : pred ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <span className="font-semibold text-purple-400">
+                                  {(pred.probability * 100).toFixed(1)}%
+                                </span>
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 text-purple-300 border-purple-800/60 bg-purple-950/30">
+                                  ML
+                                </Badge>
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 text-xs">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
+
+              {Object.keys(predictedConvs).length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-800/60 flex items-center justify-between text-[11px] text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3 text-purple-400" />
+                    <span>Predicted conversion: gradient boosting classifier model</span>
+                  </span>
+                  <span className="font-mono text-[10px]">
+                    Model: {Object.values(predictedConvs)[0]?.modelVersion || 'active'}
+                  </span>
+                </div>
+              )}
             </Card>
           </div>
         </div>
@@ -722,6 +807,12 @@ export default function CampaignDetailPage() {
                   <TableHead className="text-gray-400">Rank</TableHead>
                   <TableHead className="text-gray-400">Channel</TableHead>
                   <TableHead className="text-gray-400">Type</TableHead>
+                  <TableHead className="text-gray-400 text-right">
+                    <span className="inline-flex items-center gap-1 justify-end">
+                      <Sparkles className="h-3 w-3 text-purple-400" />
+                      Pred. Conv
+                    </span>
+                  </TableHead>
                   <TableHead className="text-gray-400 text-right">CTR</TableHead>
                   <TableHead className="text-gray-400 text-right">CPC</TableHead>
                   <TableHead className="text-gray-400 text-right">CPA</TableHead>
@@ -735,26 +826,37 @@ export default function CampaignDetailPage() {
               <TableBody>
                 {publisherAnalytics.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-6 text-gray-500 text-xs">
+                    <TableCell colSpan={12} className="text-center py-6 text-gray-500 text-xs">
                       No publisher performance data in this timeframe.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  publisherAnalytics.map((p) => (
-                    <TableRow key={p.publisherId} className="border-gray-800/60">
-                      <TableCell className="font-mono font-bold text-xs text-amber-400">
-                        #{p.rank || 1}
-                      </TableCell>
-                      <TableCell className="font-medium text-white text-xs">
-                        {p.publisherName}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">
-                          {p.publisherType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-xs">
-                        <div className="font-mono text-white">{formatPercent(p.ctr)}</div>
+                  publisherAnalytics.map((p) => {
+                    const pred = predictedConvs[p.publisherId];
+                    return (
+                      <TableRow key={p.publisherId} className="border-gray-800/60">
+                        <TableCell className="font-mono font-bold text-xs text-amber-400">
+                          #{p.rank || 1}
+                        </TableCell>
+                        <TableCell className="font-medium text-white text-xs">
+                          {p.publisherName}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">
+                            {p.publisherType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs">
+                          {pred ? (
+                            <span className="font-semibold text-purple-400">
+                              {(pred.probability * 100).toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-xs">
+                          <div className="font-mono text-white">{formatPercent(p.ctr)}</div>
                         <TrendDelta delta={p.trends?.ctrDelta} />
                       </TableCell>
                       <TableCell className="text-right text-xs">
@@ -783,8 +885,9 @@ export default function CampaignDetailPage() {
                         {formatCurrency(p.spend)}
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
+                  );
+                })
+              )}
               </TableBody>
             </Table>
           </Card>

@@ -10,6 +10,7 @@ import {
   UpdateJobRequest,
   CandidateMatchResult,
   JobMatchesResponse,
+  PredictFillResponse,
 } from '@talentpulse/shared';
 import {
   Briefcase,
@@ -35,7 +36,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
@@ -57,6 +58,26 @@ export default function JobDetailPage() {
   const [isMatchesLoading, setIsMatchesLoading] = React.useState(false);
   const [hasLoadedMatches, setHasLoadedMatches] = React.useState(false);
   const [expandedBreakdowns, setExpandedBreakdowns] = React.useState<Record<string, boolean>>({});
+
+  // Predictive Intelligence State (Task 21)
+  const [fillPrediction, setFillPrediction] = React.useState<PredictFillResponse | null>(null);
+  const [isPredictingFill, setIsPredictingFill] = React.useState(false);
+
+  const fetchFillPrediction = React.useCallback(async () => {
+    setIsPredictingFill(true);
+    try {
+      const res = await api.post<{ data: PredictFillResponse }>('/api/ml/predict/fill', { jobId: id });
+      setFillPrediction(res.data);
+    } catch {
+      // Graceful fallback if ML service offline
+    } finally {
+      setIsPredictingFill(false);
+    }
+  }, [id]);
+
+  React.useEffect(() => {
+    fetchFillPrediction();
+  }, [fetchFillPrediction]);
 
   // Edit Modal State
   const [isEditOpen, setIsEditOpen] = React.useState(false);
@@ -468,6 +489,117 @@ export default function JobDetailPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Predictive Intelligence: Job Fill Probability (Task 21) */}
+              <Card className="bg-[#0E131F] border-gray-800">
+                <CardHeader className="border-b border-gray-800/80 pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold text-white flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      Predictive Intelligence
+                    </CardTitle>
+                    {fillPrediction && (
+                      <Badge
+                        variant={
+                          fillPrediction.risk === 'Low'
+                            ? 'success'
+                            : fillPrediction.risk === 'Medium'
+                            ? 'warning'
+                            : 'danger'
+                        }
+                        className="text-[10px]"
+                      >
+                        {fillPrediction.risk} Risk
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription className="text-xs text-gray-400">
+                    ML-forecasted 45-day fill likelihood & risk factors
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  {isPredictingFill ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-8 w-24" />
+                      <Skeleton className="h-2 w-full" />
+                      <Skeleton className="h-12 w-full" />
+                    </div>
+                  ) : fillPrediction ? (
+                    <>
+                      <div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold font-mono text-white">
+                            {Math.round(fillPrediction.probability * 100)}%
+                          </span>
+                          <span className="text-xs text-gray-400">Fill Probability</span>
+                        </div>
+                        <div className="w-full bg-gray-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                          <div
+                            className={`h-1.5 rounded-full ${
+                              fillPrediction.probability >= 0.65
+                                ? 'bg-emerald-500'
+                                : fillPrediction.probability >= 0.35
+                                ? 'bg-amber-500'
+                                : 'bg-rose-500'
+                            }`}
+                            style={{ width: `${Math.round(fillPrediction.probability * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Top explainability factors */}
+                      {fillPrediction.topFactors.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-gray-800/60">
+                          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                            Key Influencing Factors
+                          </span>
+                          <div className="space-y-1.5">
+                            {fillPrediction.topFactors.map((factor, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-start justify-between text-xs p-1.5 rounded bg-gray-900/60 border border-gray-800/60"
+                              >
+                                <span className="text-gray-300 text-[11px]">{factor.description}</span>
+                                <Badge
+                                  variant={factor.impact === 'positive' ? 'success' : 'danger'}
+                                  className="text-[9px] px-1 py-0 ml-1.5 shrink-0"
+                                >
+                                  {factor.impact === 'positive' ? '+ Boost' : '- Drag'}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 pt-1">
+                        <span>Model: {fillPrediction.modelVersion}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={fetchFillPrediction}
+                          className="h-5 px-1.5 text-[10px] text-gray-400 hover:text-white"
+                        >
+                          <RefreshCw className="h-2.5 w-2.5 mr-1" />
+                          Re-score
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4 text-xs text-gray-500">
+                      <span>Unable to generate fill forecast</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={fetchFillPrediction}
+                        className="mt-2 text-xs h-7"
+                      >
+                        Retry Forecast
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               <Card className="bg-[#0E131F] border-gray-800">
                 <CardHeader className="border-b border-gray-800/80 pb-3">

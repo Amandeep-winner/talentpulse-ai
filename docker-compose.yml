@@ -61,8 +61,29 @@ services:
       LLM_PROVIDER: mock
       EMBEDDING_PROVIDER: local
       EMBEDDING_DIM: 384
+      ML_SERVICE_URL: http://ml:8000
+      ML_SERVICE_TOKEN: dev-ml-token
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ml:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    container_name: talentpulse-ml
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ML_SERVICE_TOKEN: dev-ml-token
+      MODELS_DIR: /app/models
+    volumes:
+      - ml_models_data:/app/models
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -85,6 +106,8 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: dev-access-token-secret-at-least-32-chars-long
       JWT_REFRESH_SECRET: dev-refresh-token-secret-at-least-32-chars-long
+      ML_SERVICE_URL: http://ml:8000
+      ML_SERVICE_TOKEN: dev-ml-token
 
   web:
     build:
@@ -104,3 +127,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  ml_models_data:

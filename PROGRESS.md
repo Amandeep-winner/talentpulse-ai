@@ -163,7 +163,18 @@ This document tracks implementation progress across all 34 tasks.
   - Added "Experiments" navigation item to web sidebar.
   - Formatted `docs/optimization.md` with complete mathematical formulations and proofs.
   - Verified with 9 math unit tests, 10 API integration tests, 3 Bandit Lab web tests, and 4 Experiments web tests (261/261 tests passing across monorepo).
-- [ ] Task 21: Predictive intelligence (ML service)
+- [x] Task 21: Predictive intelligence (FastAPI ML service)
+  - Built Python FastAPI microservice in `services/ml` with endpoints: `GET /health`, `GET /models`, `POST /train/{model_name}`, and `POST /predict/{model_name}`.
+  - Implemented `application_prob` model comparing baseline Logistic Regression against Gradient Boosting with automated ROC-AUC selection (> 0.60 gate).
+  - Implemented `fill_prob` model using Random Forest to forecast 45-day requisition fill likelihood, risk categories (High < 0.35, Medium 0.35..0.65, Low >= 0.65), and standardized feature-deviation explainability factors.
+  - Built model registry persisting joblib serialized artifacts and JSON metrics under `/models/{name}/{version}` with active version tracking.
+  - Created `Dockerfile.ml` and configured `ml` container in `docker-compose.yml` with healthchecks and persistent models volume.
+  - Built typed API client `ml.client.ts` with 5s timeout, 2x exponential retries, and a 3-failure circuit-breaker-lite.
+  - Built `ml.service.ts` generating training datasets, persisting transactional `ModelVersion` records, and providing graceful heuristic fallbacks when the ML microservice is unreachable.
+  - Mounted authenticated ML routes under `/api/ml` with ADMIN role restrictions for model training.
+  - Integrated Predictive Intelligence card into Job Detail page (`/jobs/[id]`) showing fill probability, color-coded risk badge, and top contributing factors.
+  - Integrated predicted conversion rate column into Campaign Detail page (`/campaigns/[id]`) with ML badges and model version attribution.
+  - Verified with 13/13 passing pytest unit/integration tests, 10/10 passing API integration tests in `apps/api/tests/ml.test.ts`, and 3/3 passing frontend tests in `apps/web/tests/ml-intelligence.test.tsx`.
 - [ ] Task 22: Forecasting
 - [ ] Task 23: Mock ATS
 - [ ] Task 24: Webhook receiver & integration
@@ -197,7 +208,7 @@ This document tracks implementation progress across all 34 tasks.
 - [x] Text-to-SQL guarded by AST validation, read-only role, tenant GUC, timeout
 - [x] Optimizer (rules + scoring + constrained allocation) with approve/reject flow
 - [x] Bandit lab (LinUCB, epsilon-greedy, baselines) + A/B experiments with significance test
-- [ ] ML predictions (application/fill probability, risk) with evaluation metrics
+- [x] ML predictions (application/fill probability, risk) with evaluation metrics
 - [ ] Forecasting with backtest metrics and shortfall alerts
 - [ ] Mock ATS + signed webhooks + retries + dead-letter + replay
 - [ ] Multi-agent supervisor with controlled tools and logged tool traces

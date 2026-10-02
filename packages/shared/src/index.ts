@@ -656,6 +656,9 @@ export const campaignItemSchema = z.object({
     id: z.string().uuid(),
     title: z.string(),
     location: z.string(),
+    category: z.string().optional(),
+    minExperienceYears: z.number().optional(),
+    remote: z.boolean().optional(),
   }).optional(),
   publishers: z.array(campaignPublisherItemSchema).optional(),
 });
@@ -1076,4 +1079,81 @@ export interface ExperimentResultsResponse {
   winner?: string | null;
   createdAt: string;
 }
+
+/**
+ * Predictive Intelligence & ML Enums and Schemas (Task 21)
+ */
+export const MlModelNameEnum = z.enum(['application_prob', 'fill_prob']);
+export type MlModelName = z.infer<typeof MlModelNameEnum>;
+
+export const MlRiskBucketEnum = z.enum(['High', 'Medium', 'Low']);
+export type MlRiskBucket = z.infer<typeof MlRiskBucketEnum>;
+
+export const mlTopFactorSchema = z.object({
+  feature: z.string(),
+  impact: z.enum(['positive', 'negative']),
+  weight: z.number(),
+  description: z.string(),
+});
+export type MlTopFactor = z.infer<typeof mlTopFactorSchema>;
+
+export const predictApplicationRequestSchema = z.object({
+  jobCategory: z.string(),
+  experienceReq: z.number().nonnegative(),
+  locationTier: z.string(),
+  publisherType: z.string(),
+  historicalCtr: z.number().nonnegative(),
+  historicalCpa: z.number().nonnegative(),
+  historicalConv: z.number().nonnegative(),
+  dayOfWeek: z.number().int().min(0).max(6).default(0),
+  bid: z.number().positive(),
+  budget: z.number().positive(),
+});
+export type PredictApplicationRequest = z.infer<typeof predictApplicationRequestSchema>;
+
+export const predictApplicationResponseSchema = z.object({
+  probability: z.number().min(0).max(1),
+  modelVersion: z.string(),
+  topFactors: z.array(mlTopFactorSchema),
+});
+export type PredictApplicationResponse = z.infer<typeof predictApplicationResponseSchema>;
+
+export const predictFillRequestSchema = z.object({
+  jobId: z.string().uuid('Invalid job ID format'),
+});
+export type PredictFillRequest = z.infer<typeof predictFillRequestSchema>;
+
+export const predictFillResponseSchema = z.object({
+  jobId: z.string().uuid(),
+  jobTitle: z.string(),
+  probability: z.number().min(0).max(1),
+  risk: MlRiskBucketEnum,
+  modelVersion: z.string(),
+  topFactors: z.array(mlTopFactorSchema),
+  features: z.object({
+    salaryBand: z.number(),
+    skillsCount: z.number(),
+    applicationsFirst7d: z.number(),
+    qualifiedRate: z.number(),
+    spend: z.number(),
+    experienceReq: z.number(),
+  }),
+});
+export type PredictFillResponse = z.infer<typeof predictFillResponseSchema>;
+
+export const trainModelRequestSchema = z.object({
+  model: MlModelNameEnum,
+});
+export type TrainModelRequest = z.infer<typeof trainModelRequestSchema>;
+
+export const mlModelVersionSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string(),
+  version: z.string(),
+  metrics: z.record(z.any()),
+  trainedAt: z.string(),
+  trainingRows: z.number().int(),
+  isActive: z.boolean(),
+});
+export type MlModelVersion = z.infer<typeof mlModelVersionSchema>;
 
